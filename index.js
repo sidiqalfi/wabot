@@ -104,6 +104,9 @@ class WhatsAppBot {
             
             if (!executed) {
                 // Command not found - you can customize this behavior
+                await this.sendMessage(jid, {
+                    text: `❌ Command "${commandName}" not found!`
+                });
                 console.log(`❓ Unknown command: ${commandName}`);
             }
         }

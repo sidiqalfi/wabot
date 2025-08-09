@@ -1,42 +1,46 @@
-const speedTest = require('speedtest-net');
+const FastSpeedtest = require("fast-speedtest-api");
 
 module.exports = {
     name: 'speedtest',
-    description: 'Tes kecepatan internet server bot',
+    description: 'Tes kecepatan internet server bot (Fast.com)',
     usage: 'speedtest',
     category: 'utility',
 
-    async execute(message, sock, args) {
+    async execute(message, sock) {
         try {
-            await sock.sendMessage(message.key.remoteJid, {
-                text: '📡 *Speedtest dimulai...*\nMohon tunggu sekitar 10–30 detik ya...'
+            const remoteJid = message.key.remoteJid;
+
+            await sock.sendMessage(remoteJid, {
+                text: '📡 *Speedtest dimulai...*\nMohon tunggu sekitar 10–20 detik ya...'
             });
 
-            const result = await speedTest({ acceptLicense: true, acceptGdpr: true });
-
-            const ping = result.ping.latency;
-            const download = (result.download.bandwidth / 1024 / 1024).toFixed(2);
-            const upload = (result.upload.bandwidth / 1024 / 1024).toFixed(2);
-            const isp = result.isp;
-            const serverName = result.server.name;
-            const country = result.server.country;
-
-            const resultText = `📊 *Hasil Speedtest:*\n\n` +
-                `📡 ISP: ${isp}\n` +
-                `🌍 Server: ${serverName}, ${country}\n` +
-                `📶 Ping: ${ping} ms\n` +
-                `📥 Download: ${download} Mbps\n` +
-                `📤 Upload: ${upload} Mbps`;
-
-            await sock.sendMessage(message.key.remoteJid, {
-                text: resultText
+            // API token default dari fast-speedtest-api
+            const speedtest = new FastSpeedtest({
+                token: "YXNkZmFzZGxmbnNkYWZoYXNkZmhrYWxm", // token bawaan (tidak perlu diubah)
+                verbose: false,
+                timeout: 10000,
+                https: true,
+                urlCount: 5,
+                bufferSize: 8,
+                unit: FastSpeedtest.UNITS.Mbps
             });
+
+            const downloadSpeed = await speedtest.getSpeed();
+
+            const resultText =
+                `📊 *Hasil Speedtest:*\n\n` +
+                `📥 Download: ${downloadSpeed.toFixed(2)} Mbps\n` +
+                `📤 Upload: (Tidak tersedia di Fast.com)\n` +
+                `ℹ️ Sumber: Fast.com`;
+
+            await sock.sendMessage(remoteJid, { text: resultText });
 
         } catch (error) {
-            console.error(`Error in speedtest command:`, error);
+            console.error(`Error in ${this.name} command:`, error);
             await sock.sendMessage(message.key.remoteJid, {
-                text: '❌ Speedtest gagal. Mungkin server kamu diblokir oleh Speedtest.net atau koneksi sedang gangguan.'
+                text: '❌ Speedtest gagal dijalankan. Coba lagi nanti.'
             });
         }
     }
 };
+

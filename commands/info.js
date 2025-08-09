@@ -35,7 +35,7 @@ module.exports = {
             const developer = process.env.BOT_DEVELOPER || 'Unknown Developer';
             const support = process.env.BOT_SUPPORT || '-';
             const botName = process.env.BOT_NAME || 'WhatsBot';
-            const botPrefix = process.env.BOT_PREFIX || '!';
+            const botPrefix = process.env.PREFIX || '!';
             const uptime = formatUptime(process.uptime());
 
             const platform = os.platform(); // win32, linux, darwin
