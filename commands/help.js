@@ -1,5 +1,6 @@
 module.exports = {
     name: 'help',
+    aliases: ['menu'],
     description: 'Menampilkan daftar command yang tersedia',
     usage: 'help [command]',
     category: 'utility',

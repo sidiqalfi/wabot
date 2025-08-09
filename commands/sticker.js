@@ -9,6 +9,7 @@ require('dotenv').config();
 
 module.exports = {
     name: 'sticker',
+    aliases: ['s', 'stiker'],
     description: 'Ubah gambar/video jadi stiker (dengan optional packname & author)',
     usage: 'sticker [packname]|[author] (opsional)',
     category: 'fun',

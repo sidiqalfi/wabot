@@ -8,6 +8,28 @@ const {
 const qrcode = require('qrcode-terminal');
 const CommandHandler = require('./commandHandler');
 
+// Helper buat unwrap & ambil teks/caption dari semua jenis pesan
+function unwrapMessage(msg) {
+    let m = msg.message;
+    if (m?.ephemeralMessage) m = m.ephemeralMessage.message;
+    if (m?.viewOnceMessage) m = m.viewOnceMessage.message;
+    if (m?.viewOnceMessageV2) m = m.viewOnceMessageV2.message;
+    if (m?.documentWithCaptionMessage) m = m.documentWithCaptionMessage.message;
+    return m || msg.message;
+}
+
+function extractTextFromAny(msg) {
+    const m = unwrapMessage(msg) || {};
+    return (
+        m.conversation ||
+        m.extendedTextMessage?.text ||
+        m.imageMessage?.caption ||
+        m.videoMessage?.caption ||
+        m.documentMessage?.caption ||
+        ''
+    );
+}
+
 class WhatsAppBot {
     constructor() {
         this.commandHandler = new CommandHandler();
@@ -75,39 +97,40 @@ class WhatsAppBot {
      */
     async handleMessage(messageUpdate) {
         const { messages } = messageUpdate;
-        
+
         for (const message of messages) {
-            // Skip if message is from bot itself or not a text message
-            if (message.key.fromMe || !message.message?.conversation && !message.message?.extendedTextMessage?.text) {
-                continue;
-            }
-            
-            const text = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
-            const jid = message.key.remoteJid;
-            const isGroup = jid.endsWith('@g.us');
-            const sender = jidNormalizedUser(message.key.participant || message.key.remoteJid);
-            
-            // Check if message starts with prefix
-            if (!text.startsWith(this.prefix)) {
-                continue;
-            }
+            try {
+                const jid = message.key.remoteJid;
+                if (!jid || jid === 'status@broadcast') continue;
+                if (message.key.fromMe) continue;
 
-            // Parse command and arguments
-            const args = text.slice(this.prefix.length).trim().split(/ +/);
-            const commandName = args.shift().toLowerCase();
+                const text = extractTextFromAny(message);
+                if (!text) continue;
 
-            // Log command usage
-            console.log(`📝 Command used: ${commandName} | User: ${sender} | Group: ${isGroup ? 'Yes' : 'No'}`);
+                if (!text.startsWith(this.prefix)) continue;
 
-            // Execute command
-            const executed = await this.commandHandler.executeCommand(commandName, message, this.sock, args);
-            
-            if (!executed) {
-                // Command not found - you can customize this behavior
-                await this.sendMessage(jid, {
-                    text: `❌ Command "${commandName}" not found!`
-                });
-                console.log(`❓ Unknown command: ${commandName}`);
+                const withoutPrefix = text.slice(this.prefix.length).trim();
+                if (!withoutPrefix) continue;
+
+                const parts = withoutPrefix.split(/\s+/);
+                const commandName = (parts.shift() || '').toLowerCase();
+                const args = parts;
+
+                const isGroup = jid.endsWith('@g.us');
+                const sender = jidNormalizedUser(message.key.participant || message.key.remoteJid);
+
+                console.log(`📝 Command used: ${commandName} | User: ${sender} | Group: ${isGroup ? 'Yes' : 'No'}`);
+
+                const executed = await this.commandHandler.executeCommand(commandName, message, this.sock, args);
+
+                if (!executed) {
+                    await this.sendMessage(jid, {
+                        text: `❌ Command "${commandName}" not found!`
+                    });
+                    console.log(`❓ Unknown command: ${commandName}`);
+                }
+            } catch (err) {
+                console.error('handleMessage error:', err);
             }
         }
     }

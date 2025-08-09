@@ -2,100 +2,135 @@ const fs = require('fs');
 const path = require('path');
 
 class CommandHandler {
-    constructor() {
-        this.commands = new Map();
-        this.loadCommands();
+  constructor() {
+    // Map key = nama/alias (lowercase), value = command object
+    this.commands = new Map();
+    // Simpan set unik command objects buat listing help (biar alias gak dobel)
+    this._uniqueCommands = new Set();
+    this.loadCommands();
+  }
+
+  /**
+   * Load all commands from the commands directory
+   */
+  loadCommands() {
+    const commandsDir = path.join(__dirname, 'commands');
+
+    if (!fs.existsSync(commandsDir)) {
+      console.log('Commands directory not found');
+      return;
     }
 
-    /**
-     * Load all commands from the commands directory
-     */
-    loadCommands() {
-        const commandsDir = path.join(__dirname, 'commands');
-        
-        if (!fs.existsSync(commandsDir)) {
-            console.log('Commands directory not found');
-            return;
+    const commandFiles = fs.readdirSync(commandsDir).filter(f => f.endsWith('.js'));
+    let loadedKeys = 0;
+
+    for (const file of commandFiles) {
+      const full = path.join(commandsDir, file);
+      try {
+        const command = require(full);
+
+        if (!command || typeof command.execute !== 'function' || !command.name) {
+          console.log(`❌ Invalid command structure in ${file}`);
+          continue;
         }
 
-        const commandFiles = fs.readdirSync(commandsDir).filter(file => file.endsWith('.js'));
+        const name = String(command.name).toLowerCase();
 
-        for (const file of commandFiles) {
-            try {
-                const command = require(path.join(commandsDir, file));
-                
-                if (command.name && command.execute) {
-                    this.commands.set(command.name, command);
-                    console.log(`✅ Loaded command: ${command.name}`);
-                } else {
-                    console.log(`❌ Invalid command structure in ${file}`);
-                }
-            } catch (error) {
-                console.log(`❌ Error loading command ${file}:`, error.message);
-            }
+        // Daftar nama utama
+        this._registerKey(name, command, file);
+
+        // Daftar aliases (opsional)
+        if (Array.isArray(command.aliases)) {
+          for (const al of command.aliases) {
+            if (!al) continue;
+            const alias = String(al).toLowerCase();
+            this._registerKey(alias, command, file, true);
+          }
         }
 
-        console.log(`📦 Total commands loaded: ${this.commands.size}`);
+        // Track unik command object (buat getCommands)
+        this._uniqueCommands.add(command);
+        loadedKeys++;
+
+      } catch (err) {
+        console.log(`❌ Error loading command ${file}:`, err.message);
+      }
     }
 
-    /**
-     * Reload all commands (useful for development)
-     */
-    reloadCommands() {
-        // Clear module cache for commands
-        const commandsDir = path.join(__dirname, 'commands');
-        Object.keys(require.cache).forEach(key => {
-            if (key.startsWith(commandsDir)) {
-                delete require.cache[key];
-            }
-        });
+    console.log(`📦 Total keys loaded (names+aliases): ${this.commands.size}`);
+    console.log(`✅ Unique commands: ${this._uniqueCommands.size}`);
+  }
 
-        this.commands.clear();
-        this.loadCommands();
+  _registerKey(key, command, file, isAlias = false) {
+    if (this.commands.has(key)) {
+      const tag = isAlias ? 'alias' : 'name';
+      console.warn(`⚠️ Duplicate ${tag} "${key}" in ${file}. Key skipped.`);
+      return;
+    }
+    this.commands.set(key, command);
+    console.log(`✅ Loaded ${isAlias ? 'alias' : 'command'}: ${key}`);
+  }
+
+  /**
+   * Reload all commands (useful for development)
+   */
+  reloadCommands() {
+    const commandsDir = path.join(__dirname, 'commands') + path.sep;
+
+    // Clear module cache for anything under /commands/
+    for (const k of Object.keys(require.cache)) {
+      if (k.startsWith(commandsDir)) {
+        delete require.cache[k];
+      }
     }
 
-    /**
-     * Execute a command
-     * @param {string} commandName - The command name
-     * @param {Object} message - The WhatsApp message object
-     * @param {Object} sock - The Baileys socket instance
-     * @param {Array} args - Command arguments
-     */
-    async executeCommand(commandName, message, sock, args) {
-        const command = this.commands.get(commandName);
-        
-        if (!command) {
-            return false; // Command not found
-        }
+    this.commands.clear();
+    this._uniqueCommands.clear();
+    this.loadCommands();
+  }
 
-        try {
-            await command.execute(message, sock, args);
-            return true;
-        } catch (error) {
-            console.error(`Error executing command ${commandName}:`, error);
-            
-            // Send error message to user
-            await sock.sendMessage(message.key.remoteJid, {
-                text: `❌ Terjadi kesalahan saat menjalankan command: ${commandName}`
-            });
-            
-            return false;
-        }
+  /**
+   * Execute a command (name OR alias, any case)
+   * @param {string} commandName
+   * @param {Object} message - Baileys message
+   * @param {Object} sock - WASocket
+   * @param {Array} args
+   */
+  async executeCommand(commandName, message, sock, args) {
+    const key = String(commandName || '').toLowerCase();
+    const command = this.commands.get(key);
+
+    if (!command) {
+      return false; // unknown command (biar handler luar bisa kirim "unknown command" sendiri)
     }
 
-    /**
-     * Get all available commands
-     */
-    getCommands() {
-        return Array.from(this.commands.values());
+    try {
+      await command.execute(message, sock, args);
+      return true;
+    } catch (error) {
+      console.error(`Error executing ${command.name}:`, error);
+      // Kirim error ke user
+      await sock.sendMessage(message.key.remoteJid, {
+        text: `❌ Terjadi kesalahan saat menjalankan command: ${command.name}`
+      });
+      return false;
     }
+  }
 
-    /**
-     * Get command by name
-     */
-    getCommand(name) {
-        return this.commands.get(name);
-    }
+  /**
+   * Get all available commands (unique, tanpa duplikasi alias)
+   */
+  getCommands() {
+    return Array.from(this._uniqueCommands.values());
+  }
+
+  /**
+   * Get command by exact key (name/alias, any case)
+   */
+  getCommand(name) {
+    const key = String(name || '').toLowerCase();
+    return this.commands.get(key);
+  }
 }
 
 module.exports = CommandHandler;
