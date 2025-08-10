@@ -148,10 +148,21 @@ class WhatsAppBot {
         );
 
         if (!executed) {
-          await this.sendMessage(jid, {
-            text: `❌ Command "${commandName}" not found!`,
-          });
-          console.log(`❓ Unknown command: ${commandName}`);
+          const suggestion = this.commandHandler.getSuggestion(commandName);
+          if (suggestion) {
+            await this.sendMessage(jid, {
+              text:
+                `❌ Command "${commandName}" gak ketemu.\n` +
+                `👉 Maksud kamu *${this.prefix}${suggestion}* ?`,
+            });
+          } else {
+            await this.sendMessage(jid, {
+              text: `❌ Command "${commandName}" not found!`,
+            });
+          }
+          console.log(
+            `❓ Unknown command: ${commandName} ${suggestion ? `(suggest: ${suggestion})` : ""}`,
+          );
         }
       } catch (err) {
         console.error("handleMessage error:", err);

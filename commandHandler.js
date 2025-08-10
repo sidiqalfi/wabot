@@ -26,6 +26,47 @@ function norm(s = "") {
   return String(s).toLowerCase().trim().replace(/\s+/g, " ");
 }
 
+// ===== Fuzzy helpers (Levenshtein) =====
+function levenshtein(a = "", b = "") {
+  a = String(a);
+  b = String(b);
+  const m = a.length,
+    n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1, // deletion
+        dp[i][j - 1] + 1, // insertion
+        dp[i - 1][j - 1] + cost, // substitution
+      );
+    }
+  }
+  return dp[m][n];
+}
+
+function similarityDistance(input, candidate) {
+  // kombinasi heuristik: exact prefix bonus + Levenshtein
+  const dist = levenshtein(input, candidate);
+  const prefixBonus = candidate.startsWith(input) ? -1 : 0; // makin kecil = makin mirip
+  return dist + prefixBonus;
+}
+
+// Threshold dinamis biar fleksibel di nama panjang/pendek
+function maxAllowedDistance(input) {
+  const len = Math.max(1, input.length);
+  if (len <= 4) return 1; // typo pendek harus ketat
+  if (len <= 8) return 2;
+  return Math.floor(len * 0.3); // 30% dari panjang
+}
+
 class CommandHandler {
   constructor() {
     // Map key = nama/alias (lowercase), value = command object
@@ -40,7 +81,7 @@ class CommandHandler {
       { match: "selamat pagi", reply: "Selamat pagi juga! 🌅" },
       { match: "selamat siang", reply: "Selamat siang juga! 🌞" },
       { match: "selamat sore", reply: "Selamat sore! 🌤️" },
-      { match: "selamat malam", reply: "Selamat malam juga! 🌙" }
+      { match: "selamat malam", reply: "Selamat malam juga! 🌙" },
     ];
     try {
       if (fs.existsSync(dataPath)) {
@@ -53,6 +94,42 @@ class CommandHandler {
     this._qrCooldown = new Map(); // key: chatJid -> lastTs
 
     this.loadCommands();
+  }
+
+  /**
+   * Cari saran command paling mirip saat user typo
+   * @param {string} name - input command dari user (tanpa prefix)
+   * @returns {string|null} - nama kandidat (key) terbaik atau null
+   */
+  getSuggestion(name) {
+    const input = String(name || "")
+      .toLowerCase()
+      .trim();
+    if (!input) return null;
+
+    let best = null;
+    let bestScore = Infinity;
+
+    for (const key of this.commands.keys()) {
+      const score = similarityDistance(input, String(key));
+      if (score < bestScore) {
+        bestScore = score;
+        best = key;
+      }
+    }
+
+    // Validasi dengan threshold dinamis
+    if (best && bestScore <= maxAllowedDistance(input)) {
+      return best;
+    }
+
+    // fallback ringan: contain match (kalau user ketik sebagian)
+    const partial = Array.from(this.commands.keys()).find((k) =>
+      k.includes(input),
+    );
+    if (partial) return partial;
+
+    return null;
   }
 
   /**
