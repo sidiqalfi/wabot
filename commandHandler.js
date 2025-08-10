@@ -1,6 +1,30 @@
-const fs = require('fs');
-const path = require('path');
-const { record } = require('./lib/statsStore'); // ⬅️ tambah: pencatat statistik
+const fs = require("fs");
+const path = require("path");
+const { record } = require("./lib/statsStore"); // pencatat statistik
+
+// ===== Helpers untuk quick reply tanpa prefix =====
+function unwrapMessage(msg) {
+  let m = msg.message;
+  if (m?.ephemeralMessage) m = m.ephemeralMessage.message;
+  if (m?.viewOnceMessage) m = m.viewOnceMessage.message;
+  if (m?.viewOnceMessageV2) m = m.viewOnceMessageV2.message;
+  if (m?.documentWithCaptionMessage) m = m.documentWithCaptionMessage.message;
+  return m || msg.message;
+}
+function extractTextFromAny(msg) {
+  const m = unwrapMessage(msg) || {};
+  return (
+    m?.conversation ||
+    m?.extendedTextMessage?.text ||
+    m?.imageMessage?.caption ||
+    m?.videoMessage?.caption ||
+    m?.documentMessage?.caption ||
+    ""
+  );
+}
+function norm(s = "") {
+  return String(s).toLowerCase().trim().replace(/\s+/g, " ");
+}
 
 class CommandHandler {
   constructor() {
@@ -8,21 +32,86 @@ class CommandHandler {
     this.commands = new Map();
     // Simpan set unik command objects buat listing help (biar alias gak dobel)
     this._uniqueCommands = new Set();
+
+    // ====== Quick Replies config ======
+    // Bisa override lewat file: ./data/quickReplies.json (array of {match, reply})
+    const dataPath = path.join(__dirname, "data", "quickReplies.json");
+    this.quickReplies = [
+      { match: "selamat pagi", reply: "Selamat pagi juga! 🌅" },
+      { match: "selamat siang", reply: "Selamat siang juga! 🌞" },
+      { match: "selamat sore", reply: "Selamat sore! 🌤️" },
+      { match: "selamat malam", reply: "Selamat malam juga! 🌙" }
+    ];
+    try {
+      if (fs.existsSync(dataPath)) {
+        const arr = JSON.parse(fs.readFileSync(dataPath, "utf8"));
+        if (Array.isArray(arr) && arr.length) this.quickReplies = arr;
+      }
+    } catch {}
+
+    this.qrCooldownMs = parseInt(process.env.QR_COOLDOWN_MS || "3000", 10);
+    this._qrCooldown = new Map(); // key: chatJid -> lastTs
+
     this.loadCommands();
+  }
+
+  /**
+   * Quick reply tanpa prefix (panggil ini sebelum cek prefix di handler kamu)
+   * Return true kalau sudah menangani (biar handler kamu bisa `continue`)
+   */
+  async tryQuickReply(message, sock) {
+    try {
+      const jid = message.key.remoteJid;
+      if (!jid || jid === "status@broadcast") return false;
+
+      const textRaw = extractTextFromAny(message);
+      if (!textRaw) return false;
+
+      const text = norm(textRaw);
+
+      // Cooldown per chat
+      const last = this._qrCooldown.get(jid) || 0;
+      if (Date.now() - last < this.qrCooldownMs) return false;
+
+      for (const item of this.quickReplies) {
+        const key = norm(item.match || "");
+        if (!key) continue;
+
+        // Cocokkan di awal kalimat (biar gak kebablasan)
+        // if (text.startsWith(key)) {
+        //   await sock.sendMessage(jid, { text: item.reply || '' });
+        //   this._qrCooldown.set(jid, Date.now());
+        //   return true;
+        // }
+
+        // Kalau mau mode contains, ganti ke:
+        if (text.includes(key)) {
+          await sock.sendMessage(jid, { text: item.reply || "" });
+          this._qrCooldown.set(jid, Date.now());
+          return true;
+        }
+      }
+
+      return false;
+    } catch {
+      return false;
+    }
   }
 
   /**
    * Load all commands from the commands directory
    */
   loadCommands() {
-    const commandsDir = path.join(__dirname, 'commands');
+    const commandsDir = path.join(__dirname, "commands");
 
     if (!fs.existsSync(commandsDir)) {
-      console.log('Commands directory not found');
+      console.log("Commands directory not found");
       return;
     }
 
-    const commandFiles = fs.readdirSync(commandsDir).filter(f => f.endsWith('.js'));
+    const commandFiles = fs
+      .readdirSync(commandsDir)
+      .filter((f) => f.endsWith(".js"));
     let loadedKeys = 0;
 
     for (const file of commandFiles) {
@@ -30,7 +119,11 @@ class CommandHandler {
       try {
         const command = require(full);
 
-        if (!command || typeof command.execute !== 'function' || !command.name) {
+        if (
+          !command ||
+          typeof command.execute !== "function" ||
+          !command.name
+        ) {
           console.log(`❌ Invalid command structure in ${file}`);
           continue;
         }
@@ -52,7 +145,6 @@ class CommandHandler {
         // Track unik command object (buat getCommands)
         this._uniqueCommands.add(command);
         loadedKeys++;
-
       } catch (err) {
         console.log(`❌ Error loading command ${file}:`, err.message);
       }
@@ -64,19 +156,19 @@ class CommandHandler {
 
   _registerKey(key, command, file, isAlias = false) {
     if (this.commands.has(key)) {
-      const tag = isAlias ? 'alias' : 'name';
+      const tag = isAlias ? "alias" : "name";
       console.warn(`⚠️ Duplicate ${tag} "${key}" in ${file}. Key skipped.`);
       return;
     }
     this.commands.set(key, command);
-    console.log(`✅ Loaded ${isAlias ? 'alias' : 'command'}: ${key}`);
+    console.log(`✅ Loaded ${isAlias ? "alias" : "command"}: ${key}`);
   }
 
   /**
    * Reload all commands (useful for development)
    */
   reloadCommands() {
-    const commandsDir = path.join(__dirname, 'commands') + path.sep;
+    const commandsDir = path.join(__dirname, "commands") + path.sep;
 
     // Clear module cache for anything under /commands/
     for (const k of Object.keys(require.cache)) {
@@ -98,16 +190,16 @@ class CommandHandler {
    * @param {Array} args
    */
   async executeCommand(commandName, message, sock, args) {
-    const key = String(commandName || '').toLowerCase();
+    const key = String(commandName || "").toLowerCase();
     const command = this.commands.get(key);
 
     if (!command) {
-      return false; // unknown command (biar handler luar bisa kirim "unknown command" sendiri)
+      return false; // unknown command
     }
 
     // Info dasar buat statistik
     const jid = message.key.remoteJid;
-    const isGroup = jid?.endsWith('@g.us');
+    const isGroup = jid?.endsWith("@g.us");
     const userJid = message.key.participant || message.key.remoteJid;
     const groupJid = isGroup ? jid : null;
 
@@ -118,11 +210,11 @@ class CommandHandler {
       const durationMs = Date.now() - t0;
       // catat sukses
       record({
-        command: command.name,   // simpan dengan nama asli (bukan alias)
+        command: command.name, // simpan dengan nama asli (bukan alias)
         userJid,
         groupJid,
         success: true,
-        durationMs
+        durationMs,
       });
 
       return true;
@@ -136,13 +228,13 @@ class CommandHandler {
         userJid,
         groupJid,
         success: false,
-        durationMs
+        durationMs,
       });
 
       // Kirim error ke user
       try {
         await sock.sendMessage(message.key.remoteJid, {
-          text: `❌ Terjadi kesalahan saat menjalankan command: ${command.name}`
+          text: `❌ Terjadi kesalahan saat menjalankan command: ${command.name}`,
         });
       } catch (_) {}
 
@@ -161,7 +253,7 @@ class CommandHandler {
    * Get command by exact key (name/alias, any case)
    */
   getCommand(name) {
-    const key = String(name || '').toLowerCase();
+    const key = String(name || "").toLowerCase();
     return this.commands.get(key);
   }
 }

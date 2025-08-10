@@ -15,6 +15,7 @@ yarn-error.log*
 auth_info/
 *.session
 data/stats.json
+data/quickReplies.json
 
 # Logs
 logs/
