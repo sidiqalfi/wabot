@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { record } = require('./lib/statsStore'); // ⬅️ tambah: pencatat statistik
 
 class CommandHandler {
   constructor() {
@@ -104,15 +105,47 @@ class CommandHandler {
       return false; // unknown command (biar handler luar bisa kirim "unknown command" sendiri)
     }
 
+    // Info dasar buat statistik
+    const jid = message.key.remoteJid;
+    const isGroup = jid?.endsWith('@g.us');
+    const userJid = message.key.participant || message.key.remoteJid;
+    const groupJid = isGroup ? jid : null;
+
+    const t0 = Date.now();
     try {
       await command.execute(message, sock, args);
+
+      const durationMs = Date.now() - t0;
+      // catat sukses
+      record({
+        command: command.name,   // simpan dengan nama asli (bukan alias)
+        userJid,
+        groupJid,
+        success: true,
+        durationMs
+      });
+
       return true;
     } catch (error) {
       console.error(`Error executing ${command.name}:`, error);
-      // Kirim error ke user
-      await sock.sendMessage(message.key.remoteJid, {
-        text: `❌ Terjadi kesalahan saat menjalankan command: ${command.name}`
+
+      const durationMs = Date.now() - t0;
+      // catat error
+      record({
+        command: command.name,
+        userJid,
+        groupJid,
+        success: false,
+        durationMs
       });
+
+      // Kirim error ke user
+      try {
+        await sock.sendMessage(message.key.remoteJid, {
+          text: `❌ Terjadi kesalahan saat menjalankan command: ${command.name}`
+        });
+      } catch (_) {}
+
       return false;
     }
   }
