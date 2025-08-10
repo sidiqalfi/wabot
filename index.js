@@ -36,6 +36,23 @@ class WhatsAppBot {
     this.prefix = process.env.PREFIX || "!";
     this.botName = process.env.BOT_NAME || "WhatsApp Bot";
     this.sock = null;
+
+    // ⬇️ NEW: daftar prefix (multi / legacy)
+    this.prefixes = this._resolvePrefixes();
+  }
+
+  /**
+   * Build daftar prefix dari env (comma-separated) + legacy this.prefix
+   * - .env: PREFIX="/,.,&,*"
+   * - Legacy: kalau cuma 1 nilai (mis. "/"), tetap dimasukkan.
+   */
+  _resolvePrefixes() {
+    const raw = String(process.env.PREFIX || this.prefix || "!").split(",");
+    const arr = raw.map((p) => p.trim()).filter(Boolean);
+    // Pastikan legacy this.prefix ikut masuk (kalau belum ada)
+    if (!arr.includes(this.prefix)) arr.unshift(this.prefix);
+    // Uniq
+    return [...new Set(arr)];
   }
 
   /**
@@ -43,7 +60,7 @@ class WhatsAppBot {
    */
   async initialize() {
     console.log(`🤖 Starting ${this.botName}...`);
-    console.log(`🔧 Using prefix: ${this.prefix}`);
+    console.log(`🔧 Using prefix: ${this.prefixes.join(" ")}`); // was: this.prefix
 
     await this.createConnection();
   }
@@ -97,9 +114,6 @@ class WhatsAppBot {
   /**
    * Handle incoming messages
    */
-  /**
-   * Handle incoming messages
-   */
   async handleMessage(messageUpdate) {
     const { messages } = messageUpdate;
 
@@ -121,10 +135,11 @@ class WhatsAppBot {
         );
         if (handled) continue; // sudah dibalas → skip command parsing
 
-        // 2) Command parsing (dengan prefix)
-        if (!text.startsWith(this.prefix)) continue;
+        // 2) Command parsing (multi-prefix)
+        const usedPrefix = this.prefixes.find((p) => text.startsWith(p));
+        if (!usedPrefix) continue;
 
-        const withoutPrefix = text.slice(this.prefix.length).trim();
+        const withoutPrefix = text.slice(usedPrefix.length).trim();
         if (!withoutPrefix) continue;
 
         const parts = withoutPrefix.split(/\s+/);
@@ -153,7 +168,7 @@ class WhatsAppBot {
             await this.sendMessage(jid, {
               text:
                 `❌ Command "${commandName}" gak ketemu.\n` +
-                `👉 Maksud kamu *${this.prefix}${suggestion}* ?`,
+                `👉 Maksud kamu *${usedPrefix || this.prefix}${suggestion}* ?`,
             });
           } else {
             await this.sendMessage(jid, {
