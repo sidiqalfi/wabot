@@ -3,9 +3,9 @@ const axios = require('axios');
 module.exports = {
   name: 'jadwalsholat',
   aliases: ['sholat', 'praytime'],
-  description: 'Cek jadwal sholat (myQuran v2)',
+  description: 'Cek jadwal sholat',
   usage: 'jadwalsholat <kota> [YYYY-MM-DD]',
-  category: 'info',
+  category: 'religion',
 
   async execute(message, sock, args) {
     const jid = message.key.remoteJid;

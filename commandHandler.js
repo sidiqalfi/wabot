@@ -155,18 +155,18 @@ class CommandHandler {
         if (!key) continue;
 
         // Cocokkan di awal kalimat (biar gak kebablasan)
-        // if (text.startsWith(key)) {
-        //   await sock.sendMessage(jid, { text: item.reply || '' });
-        //   this._qrCooldown.set(jid, Date.now());
-        //   return true;
-        // }
-
-        // Kalau mau mode contains, ganti ke:
-        if (text.includes(key)) {
-          await sock.sendMessage(jid, { text: item.reply || "" });
+        if (text.startsWith(key)) {
+          await sock.sendMessage(jid, { text: item.reply || '' });
           this._qrCooldown.set(jid, Date.now());
           return true;
         }
+
+        // Kalau mau mode contains, ganti ke:
+        // if (text.includes(key)) {
+        //   await sock.sendMessage(jid, { text: item.reply || "" });
+        //   this._qrCooldown.set(jid, Date.now());
+        //   return true;
+        // }
       }
 
       return false;

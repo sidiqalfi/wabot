@@ -1,112 +1,144 @@
+// info.js
+// Command: /info
+// Mode:
+// - Private chat: hanya info user + statistik dari ./data/stats.json
+// - Group chat: hanya info grup (tanpa info user/bot/server)
+
 require('dotenv').config();
+const os = require('os'); // dipakai untuk cpus length kalau mau, tapi di sini gak ditampilkan
+const fs = require('fs');
+const path = require('path');
 
-const os = require('os');
-const process = require('process');
+function formatTimeID(date = new Date()) {
+  return date.toLocaleString('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+}
 
-function formatUptime(seconds) {
-    const pad = (s) => (s < 10 ? '0' + s : s);
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+function readStats() {
+  try {
+    const p = path.resolve(process.cwd(), './data/stats.json');
+    const raw = fs.readFileSync(p, 'utf8');
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+function topCommands(perCommand, n = 5) {
+  if (!perCommand) return [];
+  return Object.entries(perCommand)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([cmd, cnt], i) => `${i + 1}. ${cmd} — ${cnt}x`);
 }
 
 module.exports = {
-    name: 'info',
-    description: 'Menampilkan info user, grup, bot & server',
-    usage: 'info',
-    category: 'utility',
+  name: 'info',
+  aliases: ['i', 'me', 'profil', 'groupinfo'],
+  description: 'Info user (private) atau info grup (group).',
+  usage: 'info',
+  category: 'utility',
 
-    async execute(message, sock, args) {
-        try {
-            const senderJid = message.key.participant || message.key.remoteJid;
-            const senderNumber = senderJid.replace(/[@:\-]/g, '').replace('g.us', '').replace('s.whatsapp.net', '');
-            const senderName = message.pushName || 'User';
-            const isGroup = message.key.remoteJid.endsWith('@g.us');
-            const groupId = isGroup ? message.key.remoteJid : null;
+  async execute(message, sock, args) {
+    try {
+      const jid = message.key.remoteJid;
+      const isGroup = jid.endsWith('@g.us');
 
-            const now = new Date();
-            const waktu = now.toLocaleString('id-ID', {
-                timeZone: 'Asia/Jakarta',
-                weekday: 'long', year: 'numeric', month: 'long',
-                day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
-            });
+      // Basic sender
+      const senderJid = message.key.participant || jid;
+      const senderName = message.pushName || 'User';
+      const senderNumber = senderJid
+        .replace(/[@:\-]/g, '')
+        .replace('g.us', '')
+        .replace('s.whatsapp.net', '');
 
-            const developer = process.env.BOT_DEVELOPER || 'Unknown Developer';
-            const support = process.env.BOT_SUPPORT || '-';
-            const botName = process.env.BOT_NAME || 'WhatsBot';
-            const botPrefix = process.env.PREFIX || '!';
-            const uptime = formatUptime(process.uptime());
+      if (!isGroup) {
+        // ================= PRIVATE CHAT: USER INFO + STATS =================
+        const stats = readStats();
+        const usageTotal = stats?.total ?? 0;
+        const usageByUser = stats?.perUser?.[senderJid] ?? 0;
+        const startedAt = stats?.startedAt ? new Date(stats.startedAt) : null;
+        const lastUpdated = stats?.lastUpdated ? new Date(stats.lastUpdated) : null;
+        const tops = topCommands(stats?.perCommand, 5);
 
-            const platform = os.platform(); // win32, linux, darwin
-            const arch = os.arch();
-            const totalMem = (os.totalmem() / 1024 / 1024).toFixed(0);
-            const usedMem = (process.memoryUsage().rss / 1024 / 1024).toFixed(0);
-            const nodeVer = process.version;
+        const lines = [
+          '💬 *INFO USER (PRIVATE)*',
+          '',
+          '👤 *User*',
+          `├ Nama: ${senderName}`,
+          `└ Nomor: wa.me/${senderNumber}`,
+          '',
+          '🗓️ *Waktu Akses*',
+          `└ ${formatTimeID(new Date())}`,
+        ];
 
-            // GRUP METADATA
-            let groupName = '-';
-            let groupSize = '-';
-            let isSenderAdmin = false;
-            let isBotAdmin = false;
-            let adminCount = 0;
-
-            if (isGroup && sock.groupMetadata) {
-                try {
-                    const metadata = await sock.groupMetadata(groupId);
-                    groupName = metadata.subject;
-                    groupSize = metadata.participants.length;
-
-                    const admins = metadata.participants.filter(p => p.admin);
-                    adminCount = admins.length;
-                    isSenderAdmin = admins.some(p => p.id === senderJid && p.admin);
-                    isBotAdmin = admins.some(p => p.id === sock.user.id && p.admin);
-                } catch (err) {
-                    console.warn('Gagal ambil metadata grup:', err);
-                }
-            }
-
-            const groupInfoText = isGroup ? 
-                `👥 *Group Info: ${groupName}*\n` +
-                `├ ID: ${groupId}\n` +
-                `├ Total Member: ${groupSize}\n` +
-                `├ Jumlah Admin: ${adminCount}\n` +
-                `├ Status Kamu: ${isSenderAdmin ? '🛡️ Admin' : '👤 Member'}\n` +
-                `└ Status Bot: ${isBotAdmin ? '✅ Admin' : '⛔ Bukan Admin'}\n\n`
-                : '';
-
-            const result =
-                `${isGroup ? '📢 *INFO DARI GRUP*\n\n' : '💬 *INFO DARI PRIVATE CHAT*\n\n'}` +
-                `👤 *User Info*\n` +
-                `├ Nama: ${senderName}\n` +
-                `├ Nomor: wa.me/${senderNumber}\n` +
-                `└ Akses: ${waktu}\n\n` +
-
-                groupInfoText +
-
-                `🤖 *Bot Info*\n` +
-                `├ Nama Bot: ${botName}\n` +
-                `├ Prefix: ${botPrefix}\n` +
-                `├ Developer: ${developer}\n` +
-                `├ Support: ${support}\n` +
-                `└ Uptime: ${uptime}\n\n` +
-
-                `🖥️ *Server Stats*\n` +
-                `├ Platform: ${platform} (${arch})\n` +
-                `├ Node.js: ${nodeVer}\n` +
-                `├ RAM: ${usedMem}MB / ${totalMem}MB\n` +
-                `└ CPU Core: ${os.cpus().length}`;
-
-            await sock.sendMessage(message.key.remoteJid, {
-                text: result
-            });
-
-        } catch (err) {
-            console.error(`Error in ${this.name} command:`, err);
-            await sock.sendMessage(message.key.remoteJid, {
-                text: '❌ Gagal mengambil info.'
-            });
+        if (stats) {
+          lines.push(
+            '',
+            '📊 *Statistik Penggunaan*',
+            `├ Total perintah dieksekusi (global): ${usageTotal}`,
+            `├ Aktivitas kamu: ${usageByUser}x`,
+            `└ Top 5 perintah:`,
+            ...(tops.length ? tops.map(t => `   • ${t}`) : ['   • -'])
+          );
+          if (startedAt || lastUpdated) {
+            lines.push(
+              '',
+              '⏱️ *Rentang Pencatatan*',
+              `├ Mulai: ${startedAt ? formatTimeID(startedAt) : '-'}`,
+              `└ Update terakhir: ${lastUpdated ? formatTimeID(lastUpdated) : '-'}`
+            );
+          }
+        } else {
+          lines.push('', '📊 *Statistik*', '└ Data tidak tersedia.');
         }
-    }
-};
 
+        await sock.sendMessage(jid, { text: lines.join('\n') });
+        return;
+      }
+
+      // ================= GROUP CHAT: GROUP INFO SAJA =================
+      let groupName = '-';
+      let groupSize = '-';
+      let groupId = jid;
+      let adminCount = 0;
+      let isBotAdmin = false;
+
+      if (sock.groupMetadata) {
+        try {
+          const meta = await sock.groupMetadata(jid);
+          groupName = meta.subject;
+          groupSize = meta.participants?.length || 0;
+          const admins = (meta.participants || []).filter(p => p.admin);
+          adminCount = admins.length;
+          isBotAdmin = admins.some(p => p.id === sock.user?.id && p.admin);
+        } catch (e) {
+          // ya sudah, tampilkan yang ada
+        }
+      }
+
+      const out = [
+        `👥 *INFO GRUP: ${groupName}*`,
+        `├ ID: ${groupId}`,
+        `├ Total Member: ${groupSize}`,
+        `├ Jumlah Admin: ${adminCount}`,
+        `└ Status Bot: ${isBotAdmin ? '✅ Admin' : '⛔ Bukan Admin'}`,
+      ].join('\n');
+
+      await sock.sendMessage(jid, { text: out });
+    } catch (err) {
+      console.error(`Error in ${this.name} command:`, err);
+      await sock.sendMessage(message.key.remoteJid, {
+        text: '❌ Gagal mengambil info.'
+      });
+    }
+  }
+};

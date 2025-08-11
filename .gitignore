@@ -14,8 +14,7 @@ yarn-error.log*
 # WhatsApp session data
 auth_info/
 *.session
-data/stats.json
-data/quickReplies.json
+data/*
 
 # Logs
 logs/

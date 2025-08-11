@@ -2,7 +2,7 @@ const axios = require('axios');
 
 module.exports = {
     name: 'meme',
-    description: 'Kirim meme random bahasa Indonesia',
+    description: 'Kirim meme random',
     usage: 'meme',
     category: 'fun',
 
@@ -21,7 +21,7 @@ module.exports = {
             // Kirim meme ke user/grup
             await sock.sendMessage(jid, {
                 image: { url: memeUrl },
-                caption: '😂 *Meme Random Bahasa Indonesia*'
+                caption: '😂 *Meme random*'
             });
 
         } catch (err) {

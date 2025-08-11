@@ -56,11 +56,25 @@ module.exports = {
 
 // Komentar lucu berdasarkan persentase
 function pickComment(p) {
-  if (p >= 90) return '🚀 Udah level dewa, gila tapi bikin kagum!';
+  if (p >= 100) return '👑 Udah gak bisa diukur, ini gila versi DLC!';
+  if (p >= 95) return '🚀 Meledak! Level kegilaan udah nembus stratosfer.';
+  if (p >= 90) return '⚡ Mode Ultra Instinct, semua kaget liat tingkah lo.';
+  if (p >= 85) return '🔥 Udah kebakar sama ide-ide absurd tiap hari.';
+  if (p >= 80) return '💥 Satu kata: Tidak ada rem.';
   if (p >= 75) return '🔥 Nyala abangku, gila tapi produktif!';
+  if (p >= 70) return '😈 Gila elegan, ada class-nya.';
+  if (p >= 65) return '🤯 Otak udah kayak jalur tol, lurus ke arah kegilaan.';
   if (p >= 60) return '🤪 Gak ada obatnya, minum panadol pun percuma.';
+  if (p >= 55) return '💫 Jalan pikiran muter kayak kipas angin rusak.';
+  if (p >= 50) return '🌀 Udah setengah masuk dimensi lain.';
   if (p >= 45) return '😜 Masih waras dikit, tapi bahaya kalau tengah malam.';
+  if (p >= 40) return '🧐 Warasnya cuma formalitas.';
+  if (p >= 35) return '🙃 Kadang normal, kadang bikin orang geleng kepala.';
   if (p >= 30) return '🙂 Masih normal... kayaknya.';
-  if (p >= 15) return '🛋️ Santai aja, belum masuk kategori gila.';
-  return '🍼 Bayi banget, belum ngerti gila.';
+  if (p >= 25) return '🛋️ Santai aja, belum masuk kategori gila berat.';
+  if (p >= 20) return '🚶 Masih bisa diajak ngobrol serius, walau rawan nyeleneh.';
+  if (p >= 15) return '🍵 Cuma sedikit nyeleneh, aman buat nongkrong bareng.';
+  if (p >= 10) return '📚 Lebih banyak mikir logis, tapi ada sisi absurdnya.';
+  if (p >= 5)  return '🍼 Baru belajar gila, masih kaku.';
+  return '🪹 Polos banget, belum ngerti gila.';
 }
