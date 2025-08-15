@@ -132,6 +132,51 @@ wabot/
 └── package.json        # Daftar dependensi dan skrip proyek
 ```
 
+## ✨ Fitur Changelogs Otomatis
+
+Bot ini memiliki command `!changelogs` yang menampilkan riwayat commit langsung di chat. Agar command ini berfungsi, Anda perlu melakukan pengaturan satu kali setelah men-clone repositori ini.
+
+### Pengaturan
+
+1.  **Buat Hook `post-commit`**
+
+    Buat file baru di dalam direktori `.git` Anda:
+    ```
+    .git/hooks/post-commit
+    ```
+
+2.  **Isi File Hook**
+
+    Salin dan tempel skrip berikut ke dalam file `post-commit` yang baru saja Anda buat:
+
+    ```sh
+    #!/bin/sh
+    # Script untuk update otomatis file changelogs.txt setelah commit
+    
+    cd "$(dirname "$0")/../../"
+    
+    # Hasilkan log dengan format custom untuk SEMUA commit
+    git log --pretty=format:"%h|%s" > data/changelogs.txt
+    ```
+
+3.  **Buat Skrip Dapat Dieksekusi**
+
+    Buka terminal di direktori proyek dan jalankan perintah ini:
+    ```bash
+    chmod +x .git/hooks/post-commit
+    ```
+
+4.  **Hasilkan File Changelog Awal**
+
+    Jalankan perintah berikut untuk membuat file `changelogs.txt` pertama kali.
+    ```bash
+    git log --pretty=format:"%h|%s" > data/changelogs.txt
+    ```
+
+Setelah ini, setiap kali Anda membuat `git commit` baru, file `data/changelogs.txt` akan diperbarui secara otomatis, dan command `!changelogs` akan selalu menampilkan data terbaru.
+
+---
+
 ## 📄 Lisensi
 
 Proyek ini dilisensikan di bawah Lisensi MIT.
