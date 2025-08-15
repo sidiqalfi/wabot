@@ -11,16 +11,47 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { setState } = require('../lib/groupState');
 
 module.exports = {
   name: 'bot',
   aliases: ['binfo', 'botinfo', 'status', 'uptime'],
-  description: 'Menampilkan info bot & server secara detail + statistik penggunaan.',
-  usage: 'bot',
+  description: 'Menampilkan info bot atau mengaktifkan/menonaktifkan bot di grup (khusus admin).',
+  usage: 'bot [on|off]',
   category: 'utility',
 
   async execute(message, sock, args) {
     const jid = message.key.remoteJid;
+    const isGroup = jid.endsWith('@g.us');
+    const sender = message.key.participant || message.key.remoteJid;
+
+    const subCommand = args[0]?.toLowerCase();
+
+    if (subCommand === 'on' || subCommand === 'off') {
+        if (!isGroup) {
+            return sock.sendMessage(jid, { text: 'Perintah ini hanya bisa digunakan di dalam grup.' });
+        }
+
+        try {
+            const groupMetadata = await sock.groupMetadata(jid);
+            const participants = groupMetadata.participants;
+            const user = participants.find(p => p.id === sender);
+
+            if (user.admin !== 'admin' && user.admin !== 'superadmin') {
+                return sock.sendMessage(jid, { text: 'Hanya admin yang dapat menggunakan perintah ini.' });
+            }
+
+            setState(jid, subCommand);
+            const status = subCommand === 'on' ? 'diaktifkan' : 'dinonaktifkan';
+            await sock.sendMessage(jid, { text: `✅ Bot telah berhasil ${status} di grup ini.` });
+            return;
+
+        } catch (e) {
+            console.error('[bot on/off] Error:', e);
+            await sock.sendMessage(jid, { text: 'Terjadi kesalahan saat mencoba mengatur status bot.' });
+            return;
+        }
+    }
 
     try {
       // ------------------ ENV & PREFIX ------------------
@@ -39,7 +70,7 @@ module.exports = {
       const osUptimeStr = formatUptimeWords(osUptime);
 
       // ------------------ SERVER INFO ------------------
-      const platform = `${os.platform()} ${os.release()}`; // ex: linux 6.8.x
+      const platform = `${os.platform()} ${os.release()}`;
       const arch = os.arch();
       const cpus = os.cpus() || [];
       const cpuModel = cpus[0]?.model || '-';
@@ -54,7 +85,7 @@ module.exports = {
       const heapTotal = process.memoryUsage().heapTotal;
       const ext = process.memoryUsage().external;
 
-      const load = os.loadavg ? os.loadavg() : [0, 0, 0]; // [1m, 5m, 15m]
+      const load = os.loadavg ? os.loadavg() : [0, 0, 0];
 
       // ------------------ STATS.JSON ------------------
       const stats = readStatsSafe('./data/stats.json');
@@ -66,9 +97,8 @@ module.exports = {
       const totalExec = num(stats?.total);
       const perUser = obj(stats?.perUser);
       const perCommand = obj(stats?.perCommand);
-      const perDay = obj(stats?.perDay); // opsional: { '2025-08-10': 12, ... }
+      const perDay = obj(stats?.perDay);
 
-      // Derive rentang: hari ini, 7 hari, 30 hari
       const todayKey = fmtDateID(now);
       const today = num(perDay[todayKey]);
 
@@ -82,8 +112,9 @@ module.exports = {
       // ------------------ CAPTION ------------------
       const lines = [
         `🤖 *${BOT_NAME}*`,
-        usedPrefix ? `Prefix dipakai: \`${usedPrefix}\`` : `Prefix dipakai: (tidak terdeteksi)`,
-        `Semua prefix (.env): ${PREFIXES.map(p => `\`${p}\``).join(' ') || '-'}`,
+        usedPrefix ? `Prefix dipakai: ${mono(usedPrefix)}` : `Prefix dipakai: (tidak terdeteksi)`,
+        `Semua prefix (.env): ${PREFIXES.length ? PREFIXES.map(mono).join(' ') : '-'}`,
+
         ``,
         `👤 Developer: ${BOT_DEVELOPER}`,
         `🛠️ Support: ${BOT_SUPPORT}`,
@@ -253,6 +284,12 @@ function topEntries(obj, n = 5) {
   return Object.entries(obj)
     .sort((a, b) => b[1] - a[1])
     .slice(0, n);
+}
+
+function mono(s) {
+  // tampilkan s sebagai monospace inline di WhatsApp biar * & . / gak bikin format rusak
+  const safe = String(s).replace(/`/g, '\\`'); // jaga-jaga kalau ada backtick
+  return '`' + safe + '`';
 }
 
 function formatDateID(date) {

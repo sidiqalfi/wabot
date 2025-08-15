@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { record } = require("./lib/statsStore"); // pencatat statistik
+const { getState } = require("./lib/groupState"); // Import state handler
 
 // ===== Helpers untuk quick reply tanpa prefix =====
 function unwrapMessage(msg) {
@@ -279,6 +280,18 @@ class CommandHandler {
     const isGroup = jid?.endsWith("@g.us");
     const userJid = message.key.participant || message.key.remoteJid;
     const groupJid = isGroup ? jid : null;
+
+    if (isGroup) {
+      const groupState = getState(groupJid);
+      if (groupState === 'off') {
+        if (command.name === 'bot' && args[0]?.toLowerCase() === 'on') {
+          // Allow !bot on to work
+        } else {
+          console.log(`[CommandHandler] Bot is OFF in group ${groupJid}. Ignoring command '${command.name}'.`);
+          return false; // Block command
+        }
+      }
+    }
 
     const t0 = Date.now();
     try {

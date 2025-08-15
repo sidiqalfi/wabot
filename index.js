@@ -7,6 +7,7 @@ const {
 } = require("baileys");
 const qrcode = require("qrcode-terminal");
 const CommandHandler = require("./commandHandler");
+const { getState } = require("./lib/groupState");
 
 // Helper buat unwrap & ambil teks/caption dari semua jenis pesan
 function unwrapMessage(msg) {
@@ -163,21 +164,26 @@ class WhatsAppBot {
         );
 
         if (!executed) {
-          const suggestion = this.commandHandler.getSuggestion(commandName);
-          if (suggestion) {
-            await this.sendMessage(jid, {
-              text:
-                `❌ Command "${commandName}" gak ketemu.\n` +
-                `👉 Maksud kamu *${usedPrefix || this.prefix}${suggestion}* ?`,
-            });
+          const groupState = isGroup ? getState(jid) : 'on';
+          if (groupState === 'on') {
+            const suggestion = this.commandHandler.getSuggestion(commandName);
+            if (suggestion) {
+              await this.sendMessage(jid, {
+                text:
+                  `❌ Command "${commandName}" gak ketemu.\n` +
+                  `👉 Maksud kamu *${usedPrefix || this.prefix}${suggestion}* ?`,
+              });
+            } else {
+              await this.sendMessage(jid, {
+                text: `❌ Command "${commandName}" not found!`, 
+              });
+            }
+            console.log(
+              `❓ Unknown command: ${commandName} ${suggestion ? `(suggest: ${suggestion})` : ""}`,
+            );
           } else {
-            await this.sendMessage(jid, {
-              text: `❌ Command "${commandName}" not found!`,
-            });
+            console.log(`[index] Bot is OFF in group ${jid}. Suppressing suggestion for '${commandName}'.`);
           }
-          console.log(
-            `❓ Unknown command: ${commandName} ${suggestion ? `(suggest: ${suggestion})` : ""}`,
-          );
         }
       } catch (err) {
         console.error("handleMessage error:", err);
