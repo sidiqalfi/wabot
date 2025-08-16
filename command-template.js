@@ -4,6 +4,7 @@
 
 module.exports = {
     name: 'namacommand', // WAJIB: Nama command (harus unik)
+    aliases: ['alias1', 'alias2'], // opsional
     description: 'Deskripsi command', // WAJIB: Deskripsi singkat command
     usage: 'namacommand [parameter]', // OPSIONAL: Cara penggunaan
     category: 'general', // OPSIONAL: Kategori command (general, utility, fun, admin, etc.)

@@ -5,11 +5,14 @@ Bot WhatsApp yang dibuat menggunakan Baileys dengan sistem command handler modul
 ## 🚀 Fitur
 
 - ✅ Command handler modular
-- ✅ Konfigurasi prefix melalui `.env`
+- ✅ Konfigurasi prefix melalui `.env` (support multi-prefix)
 - ✅ Auto-reload commands saat development (`npm run dev`)
 - ✅ Error handling
 - ✅ Otentikasi via QR Code di terminal
 - ✅ Support group dan private chat
+- ✅ Quick reply tanpa prefix
+- ✅ Command suggestion untuk typo
+- ✅ Sistem kategori command
 
 ## 📦 Instalasi
 
@@ -34,6 +37,8 @@ Bot WhatsApp yang dibuat menggunakan Baileys dengan sistem command handler modul
     PREFIX=!
     BOT_NAME=Wabot
     ```
+    
+    **Catatan:** Untuk multi-prefix, gunakan format: `PREFIX=!,/,.,&,*`
 
 4.  **Jalankan bot:**
     ```bash
@@ -48,54 +53,88 @@ Bot WhatsApp yang dibuat menggunakan Baileys dengan sistem command handler modul
 
 Berikut adalah daftar perintah yang tersedia, dikelompokkan berdasarkan kategori.
 
-### Utilitas & Informasi
+### Utility
 | Command | Description |
 |---|---|
-| `!ping` | Menguji kecepatan respon bot. |
-| `!info` | Menampilkan informasi tentang bot. |
-| `!help` | Menampilkan daftar semua perintah. |
-| `!jadwalsholat [kota]` | Menampilkan jadwal sholat untuk kota tertentu. |
-| `!cuaca [kota]` | Menampilkan kondisi cuaca saat ini di kota tertentu. |
-| `!news` | Menampilkan berita terkini. |
-| `!crypto [simbol]` | Menampilkan harga cryptocurrency. |
-| `!ssweb [url]` | Mengambil screenshot dari sebuah halaman web. |
-| `!shorturl [url]` | Mempersingkat URL. |
-| `!translate [kode_bahasa] [teks]` | Menerjemahkan teks ke bahasa lain. |
-| `!langcodes` | Menampilkan daftar kode bahasa untuk translasi. |
-| `!tts [kode_bahasa] [teks]` | Mengubah teks menjadi pesan suara. |
-| `!qrcode [teks]` | Membuat QR code dari teks. |
-| `!whois [domain]` | Menampilkan informasi WHOIS dari sebuah domain. |
-| `!speedtest` | Menguji kecepatan koneksi internet server bot. |
-| `!wiki [query]` | Mencari artikel di Wikipedia. |
+| `!ping` | Menguji kecepatan respon bot |
+| `!info` | Menampilkan informasi tentang bot |
+| `!help` | Menampilkan daftar semua perintah |
+| `!bot` | Cek status bot |
+| `!echo [pesan]` | Mengulang pesan yang dikirim |
+| `!report [pesan]` | Melaporkan bug atau saran |
 
-### Hiburan & Seru-seruan
+### Islamic
 | Command | Description |
 |---|---|
-| `!sticker` | Mengubah gambar menjadi stiker (kirim bersama gambar). |
-| `!toimg` | Mengubah stiker menjadi gambar (balas sebuah stiker). |
-| `!meme` | Mengirimkan meme random. |
-| `!quote` | Mengirimkan kutipan inspiratif. |
-| `!jodoh [nama1] [nama2]` | Meramal kecocokan jodoh. |
-| `!gila` | Mengukur tingkat kegilaan seseorang. |
-| `!roast [nama]` | Memberikan "roasting" candaan. |
-| `!pokemon [nama]` | Menampilkan informasi tentang Pokemon. |
-| `!randomfact` | Memberikan fakta random. |
-| `!tebakkata` | Game tebak kata. |
-| `!slot` | Bermain mesin slot. |
+| `!doa` | Menampilkan doa-doa harian |
+| `!asmaulhusna` | Menampilkan Asmaul Husna |
+| `!jadwalsholat [kota]` | Menampilkan jadwal sholat untuk kota tertentu |
 
-### Grup
+### Information & Tools
 | Command | Description |
 |---|---|
-| `!tagall` | Mention semua anggota grup. |
-| `!bot` | Cek melihat status bot. |
+| `!news` | Menampilkan berita lokal terkini |
+| `!crypto [simbol]` | Menampilkan harga cryptocurrency |
+| `!ssweb [url]` | Mengambil screenshot dari sebuah halaman web |
+| `!shorturl [url]` | Mempersingkat URL |
+| `!whois [domain]` | Menampilkan informasi WHOIS dari sebuah domain |
+| `!speedtest` | Menguji kecepatan koneksi internet server bot |
+| `!wiki [query]` | Mencari artikel di Wikipedia |
+| `!changelogs` | Menampilkan riwayat perubahan bot |
 
-### Lainnya
+### Translation & Language
 | Command | Description |
 |---|---|
-| `!asmaulhusna` | Menampilkan Asmaul Husna. |
-| `!dl [url]` | Mengunduh konten dari URL (misal: YouTube). |
-| `!echo [pesan]` | Mengulang pesan yang dikirim. |
-| `!reminder [waktu] [pesan]` | Mengatur pengingat. |
+| `!translate [kode_bahasa] [teks]` | Menerjemahkan teks ke bahasa lain |
+| `!langcodes` | Menampilkan daftar kode bahasa untuk translasi |
+| `!tts [kode_bahasa] [teks]` | Mengubah teks menjadi pesan suara |
+
+### Media & Entertainment
+| Command | Description |
+|---|---|
+| `!sticker` | Mengubah gambar menjadi stiker (kirim bersama gambar) |
+| `!toimg` | Mengubah stiker menjadi gambar (balas sebuah stiker) |
+| `!dl [url]` | Mengunduh konten dari URL (misal: YouTube) |
+| `!meme` | Mengirimkan meme random |
+| `!quote` | Mengirimkan kutipan inspiratif |
+| `!pokemon [nama]` | Menampilkan informasi tentang Pokemon |
+| `!fact` | Memberikan fakta random |
+| `!waifu` | Mengirimkan gambar waifu random |
+| `!cat` | Mengirimkan gambar kucing random |
+| `!dog` | Mengirimkan gambar anjing random |
+| `!fufufafa` | Mengirimkan gambar komentar fufufafa |
+
+### Games & Fun
+| Command | Description |
+|---|---|
+| `!jodoh [nama1] [nama2]` | Meramal kecocokan jodoh |
+| `!gila` | Mengukur tingkat kegilaan seseorang |
+| `!roast [nama]` | Memberikan "roasting" candaan |
+| `!tebakkata` | Game tebak kata |
+| `!slot` | Bermain mesin slot |
+| `!family100` | Game Family 100 |
+
+### Weather & Location
+| Command | Description |
+|---|---|
+| `!weather [kota]` | Menampilkan kondisi cuaca saat ini di kota tertentu |
+
+### Group Management
+| Command | Description |
+|---|---|
+| `!tagall` | Mention semua anggota grup |
+| `!rules` | Menampilkan aturan grup |
+
+### Tools
+| Command | Description |
+|---|---|
+| `!qrcode [teks]` | Membuat QR code dari teks |
+| `!reminder [waktu] [pesan]` | Mengatur pengingat |
+
+### Owner
+| Command | Description |
+|---|---|
+| `!owner` | Informasi owner bot |
 
 ## 🔨 Cara Menambah Perintah Baru
 
@@ -106,6 +145,7 @@ Berikut adalah daftar perintah yang tersedia, dikelompokkan berdasarkan kategori
     ```javascript
     module.exports = {
         name: 'namacommand',
+        aliases: ['alias1', 'alias2'], // opsional
         description: 'Deskripsi singkat tentang apa yang dilakukan command ini.',
         usage: 'contoh penggunaan', // opsional
         category: 'kategori', // opsional
@@ -123,13 +163,25 @@ Berikut adalah daftar perintah yang tersedia, dikelompokkan berdasarkan kategori
 ```
 wabot/
 ├── commands/           # Folder untuk semua file perintah
+│   ├── utility/        # Perintah utilitas (ping, help, info, dll)
+│   ├── islamic/        # Perintah islami (jadwal sholat, doa, dll)
+│   ├── games/          # Perintah game dan hiburan
+│   ├── media/          # Perintah media (sticker, download, dll)
+│   └── tools/          # Perintah tools (translate, qrcode, dll)
 ├── lib/                # Folder untuk modul/library bantuan
+│   ├── statsStore.js   # Penyimpanan statistik
+│   └── groupState.js   # State management untuk grup
 ├── auth_info/          # Menyimpan sesi otentikasi (dibuat otomatis)
+├── data/               # Folder untuk menyimpan data
+│   ├── changelogs.txt  # Riwayat perubahan
+│   ├── stats.json      # Statistik bot
+│   └── groupState.json # State grup
 ├── .env                # File konfigurasi environment
-├── .env.example        # Contoh file environment
 ├── commandHandler.js   # Logika untuk memuat dan menjalankan perintah
 ├── index.js            # File utama untuk menjalankan bot
-└── package.json        # Daftar dependensi dan skrip proyek
+├── command-template.js # Template untuk membuat command baru
+├── package.json        # Daftar dependensi dan skrip proyek
+└── README.md           # Dokumentasi proyek
 ```
 
 ## ✨ Fitur Changelogs Otomatis
@@ -174,6 +226,23 @@ Bot ini memiliki command `!changelogs` yang menampilkan riwayat commit langsung 
     ```
 
 Setelah ini, setiap kali Anda membuat `git commit` baru, file `data/changelogs.txt` akan diperbarui secara otomatis, dan command `!changelogs` akan selalu menampilkan data terbaru.
+
+## 🎯 Fitur Khusus
+
+### Multi-Prefix Support
+Bot mendukung multiple prefix yang dapat dikonfigurasi di file `.env`:
+```env
+PREFIX=!,/,.,&,*
+```
+
+### Quick Reply tanpa Prefix
+Bot dapat merespon pesan tanpa prefix untuk beberapa kata kunci umum seperti "selamat pagi", "terima kasih", dll.
+
+### Command Suggestion
+Jika user salah mengetik command, bot akan memberikan saran command yang mirip.
+
+### Auto-Reload Development
+Gunakan `npm run dev` untuk development dengan auto-reload saat ada perubahan file.
 
 ---
 
