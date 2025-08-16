@@ -1,200 +1,231 @@
-const axios = require('axios');
-
-const CATEGORIES = new Set(['general','business','entertainment','health','science','sports','technology']);
+const axios = require("axios");
 
 module.exports = {
-  name: 'news',
-  aliases: ['berita'],
-  description: 'Berita Indonesia: top headlines, kategori, atau pencarian',
-  usage: 'news [kategori]|cari <keyword> [--n=5]\nKategori: general, business, entertainment, health, science, sports, technology',
-  category: 'info',
+  name: "news",
+  aliases: ["berita", "kabar", "headline"],
+  description:
+    "Menampilkan berita dari berbagai portal Indonesia (dengan gambar & dukungan jumlah)",
+  usage:
+    "/news [sumber] [jumlah]\n/news --list\n\nContoh:\n" +
+    "/news              → 1 berita random dari semua portal\n" +
+    "/news suara        → 1 berita dari Suara.com\n" +
+    "/news tempo 5      → 5 berita dari Tempo.co\n" +
+    "/news --list       → lihat semua portal berita yang tersedia\n\n" +
+    "*Jumlah maksimal berita adalah 30*",
+  category: "general",
 
   async execute(message, sock, args) {
-    const jid = message.key.remoteJid;
     try {
-      if (!args.length) args = ['general'];
+      const baseUrl = "https://berita-indo-api-next.vercel.app";
 
-      // parse --n
-      const nMatch = args.join(' ').match(/--n=(\d{1,2})/i);
-      let limit = Math.min(Math.max(parseInt(nMatch?.[1] || '5', 10), 1), 10);
-      // bersihkan flag dari args
-      args = args.filter(a => !/^--n=\d+$/i.test(a));
+      const newsSources = [
+        {
+          key: "cnn",
+          name: "CNN",
+          endpoint: "/api/cnn-news/",
+          types: [
+            "nasional",
+            "internasional",
+            "ekonomi",
+            "olahraga",
+            "teknologi",
+            "hiburan",
+            "gaya-hidup",
+          ],
+        },
+        {
+          key: "cnbc",
+          name: "CNBC",
+          endpoint: "/api/cnbc-news/",
+          types: [
+            "market",
+            "news",
+            "entrepreneur",
+            "syariah",
+            "tech",
+            "lifestyle",
+          ],
+        },
+        {
+          key: "republika",
+          name: "Republika",
+          endpoint: "/api/republika-news/",
+          types: [
+            "news",
+            "nusantara",
+            "khazanah",
+            "islam-digest",
+            "internasional",
+            "ekonomi",
+            "sepakbola",
+            "leisure",
+          ],
+        },
+        {
+          key: "tempo",
+          name: "Tempo",
+          endpoint: "/api/tempo-news/",
+          types: [
+            "nasional",
+            "bisnis",
+            "metro",
+            "dunia",
+            "bola",
+            "sport",
+            "cantik",
+            "tekno",
+            "otomotif",
+            "nusantara",
+          ],
+        },
+        {
+          key: "antara",
+          name: "Antara",
+          endpoint: "/api/antara-news/",
+          types: [
+            "terkini",
+            "top-news",
+            "politik",
+            "hukum",
+            "ekonomi",
+            "metro",
+            "sepakbola",
+            "olahraga",
+            "humaniora",
+            "lifestyle",
+            "hiburan",
+            "dunia",
+            "infografik",
+            "tekno",
+            "otomotif",
+            "warta-bumi",
+            "rilis-pers",
+          ],
+        },
+        { key: "okezone", name: "Okezone", endpoint: "/api/okezone-news" },
+        { key: "bbc", name: "BBC", endpoint: "/api/bbc-news" },
+        { key: "kumparan", name: "Kumparan", endpoint: "/api/kumparan-news" },
+        { key: "tribun", name: "Tribun", endpoint: "/api/tribun-news" },
+        {
+          key: "zetizen",
+          name: "Zetizen",
+          endpoint: "/api/zetizen-jawapos-news",
+        },
+        { key: "suara", name: "Suara", endpoint: "/api/suara-news" },
+        { key: "voa", name: "VOA", endpoint: "/api/voa-news" },
+        { key: "vice", name: "Vice", endpoint: "/api/vice-news" },
+      ];
 
-      let mode = 'top';     // 'top' | 'category' | 'search'
-      let category = 'general';
-      let query = '';
+      // ---------- Handle /news --list ----------
+      if (args[0] === "--list") {
+        const listText =
+          "📚 *Daftar portal berita yang tersedia:*\n\n" +
+          newsSources.map((src) => `• /news ${src.key}`).join("\n") +
+          "\n\nContoh: /news tempo 3";
 
-      if (args[0]?.toLowerCase() === 'cari') {
-        mode = 'search';
-        query = args.slice(1).join(' ').trim();
-        if (!query) {
-          await sock.sendMessage(jid, { text: '❌ Tulis kata kuncinya. Contoh: `!news cari pilpres`' });
-          return;
-        }
-      } else if (CATEGORIES.has(args[0]?.toLowerCase())) {
-        mode = 'category';
-        category = args[0].toLowerCase();
-      } else {
-        // fallback: kalau bukan 'cari' dan bukan kategori valid → anggap sebagai kategori/umum
-        category = 'general';
-      }
-
-      // Ambil berita (provider chain: NewsAPI -> GNews)
-      const articles = await getNews({ mode, category, query, limit });
-
-      if (!articles.length) {
-        await sock.sendMessage(jid, { text: 'ℹ️ Tidak ada berita yang ditemukan saat ini.' });
-        return;
-      }
-
-      // Kirim 1st artikel dengan gambar (kalau ada), sisanya teks list
-      const [first, ...rest] = articles;
-
-      const header =
-        mode === 'search'
-          ? `🗞️ *Berita Indonesia — Pencarian:* _${query}_`
-          : `🗞️ *Berita Indonesia — ${category.charAt(0).toUpperCase() + category.slice(1)}*`;
-
-      // First item
-      const firstCaption =
-`${header}
-
-*${first.title}*
-🗂️ ${first.source || '-'} · 🕒 ${timeAgo(first.publishedAt)}
-🔗 ${first.url}`;
-
-      if (first.image) {
-        await sock.sendMessage(jid, {
-          image: { url: first.image },
-          caption: firstCaption
+        return await sock.sendMessage(message.key.remoteJid, {
+          text: listText,
         });
+      }
+
+      const userSource = args[0]?.toLowerCase();
+      const userCount = parseInt(args[1]) || 1;
+
+      if (userCount > 10) {
+        return await sock.sendMessage(message.key.remoteJid, {
+          text: `⚠️ Jumlah berita terlalu banyak (maksimal 10).\nSilakan masukkan angka 10 atau kurang.`,
+        });
+      }
+
+      const maxCount = userCount;
+
+      // ---------- Pilih sumber berita ----------
+      let selectedSource;
+      if (userSource) {
+        selectedSource = newsSources.find((s) => s.key === userSource);
+        if (!selectedSource && !isNaN(userCount)) {
+          // Misal: /news 5 (tanpa sumber, hanya jumlah)
+          selectedSource =
+            newsSources[Math.floor(Math.random() * newsSources.length)];
+        } else if (!selectedSource) {
+          return await sock.sendMessage(message.key.remoteJid, {
+            text: `❌ Sumber "${userSource}" tidak ditemukan.\nGunakan: /news --list`,
+          });
+        }
       } else {
-        await sock.sendMessage(jid, { text: firstCaption });
+        selectedSource =
+          newsSources[Math.floor(Math.random() * newsSources.length)];
       }
 
-      if (rest.length) {
-        const lines = rest.map((a, i) =>
-          `${i + 2}. *${a.title}*\n   ${a.source || '-'} · ${timeAgo(a.publishedAt)}\n   ${a.url}`
-        ).join('\n\n');
-
-        await sock.sendMessage(jid, { text: lines });
+      // ---------- Buat URL endpoint ----------
+      let finalUrl = `${baseUrl}${selectedSource.endpoint}`;
+      if (selectedSource.types && selectedSource.types.length > 0) {
+        const randomType =
+          selectedSource.types[
+            Math.floor(Math.random() * selectedSource.types.length)
+          ];
+        finalUrl += randomType;
       }
 
-    } catch (err) {
-      console.error(`Error in ${this.name} command:`, err?.response?.data || err);
-      await sock.sendMessage(jid, { text: '❌ Gagal mengambil berita. Coba lagi nanti.' });
+      const { data } = await axios.get(finalUrl);
+      if (!data || !Array.isArray(data.data) || data.data.length === 0) {
+        return await sock.sendMessage(message.key.remoteJid, {
+          text: `❌ Gagal ambil berita dari ${selectedSource.name}`,
+        });
+      }
+
+      // ---------- Pilih & kirim berita ----------
+      const beritaList = [...data.data]
+        .sort(() => 0.5 - Math.random())
+        .slice(0, maxCount);
+
+      for (const berita of beritaList) {
+        let imageUrl = null;
+        if (berita.image) {
+          if (typeof berita.image === "object") {
+            imageUrl = berita.image.large || berita.image.small || null;
+          } else if (typeof berita.image === "string") {
+            imageUrl = berita.image;
+          }
+        }
+
+        if (!imageUrl && typeof berita.thumbnail === "string") {
+          imageUrl = berita.thumbnail;
+        }
+
+        if (typeof imageUrl !== "string" || !/^https?:\/\//i.test(imageUrl)) {
+          imageUrl = null;
+        }
+
+        const caption =
+          `📰 *${berita.title || "Tanpa Judul"}*\n` +
+          `🗞️ Sumber: ${selectedSource.name}\n` +
+          (berita.isoDate
+            ? `🗓️ ${new Date(berita.isoDate).toLocaleString("id-ID")}\n`
+            : "") +
+          (berita.contentSnippet ? `\n📌 ${berita.contentSnippet}\n` : "") +
+          `\n🔗 ${berita.link || berita.url || "[link tidak tersedia]"}`;
+
+        if (imageUrl) {
+          await sock.sendMessage(message.key.remoteJid, {
+            image: { url: imageUrl },
+            caption: caption,
+          });
+        } else {
+          await sock.sendMessage(message.key.remoteJid, {
+            text: caption,
+          });
+        }
+
+        // Optional: kasih jeda antar berita kalau mau
+        await new Promise((res) => setTimeout(res, 500)); // 0.5 detik jeda
+      }
+    } catch (error) {
+      console.error("🔥 ERROR news command:", error);
+      await sock.sendMessage(message.key.remoteJid, {
+        text: "❌ Terjadi error saat mengambil berita. Coba lagi nanti!",
+      });
     }
-  }
+  },
 };
 
-/* ================= Helpers ================= */
-
-async function getNews({ mode, category, query, limit }) {
-  // 1) NewsAPI
-  if (process.env.NEWSAPI_KEY) {
-    try {
-      const res = await fetchNewsAPI({ mode, category, query, limit });
-      if (res.length) return res;
-    } catch (_) {}
-  }
-  // 2) GNews fallback
-  if (process.env.GNEWS_API_KEY) {
-    try {
-      const res = await fetchGNews({ mode, category, query, limit });
-      if (res.length) return res;
-    } catch (_) {}
-  }
-  return [];
-}
-
-async function fetchNewsAPI({ mode, category, query, limit }) {
-  const key = process.env.NEWSAPI_KEY;
-  const base = 'https://newsapi.org/v2';
-  const params = new URLSearchParams();
-  let url = '';
-
-  if (mode === 'search') {
-    url = `${base}/everything`;
-    params.set('q', query);
-    params.set('language', 'id'); // Indonesia language articles
-    params.set('sortBy', 'publishedAt');
-    params.set('pageSize', String(limit));
-  } else {
-    url = `${base}/top-headlines`;
-    params.set('country', 'id');
-    if (category && category !== 'general') params.set('category', category);
-    params.set('pageSize', String(limit));
-  }
-
-  const { data } = await axios.get(`${url}?${params.toString()}`, {
-    headers: { 'X-Api-Key': key },
-    timeout: 12000
-  });
-
-  const items = data?.articles || [];
-  return items.map(n => ({
-    title: n.title,
-    url: n.url,
-    source: n.source?.name,
-    publishedAt: n.publishedAt || n.published_at,
-    image: n.urlToImage || null
-  }));
-}
-
-async function fetchGNews({ mode, category, query, limit }) {
-  const key = process.env.GNEWS_API_KEY;
-  const base = 'https://gnews.io/api/v4';
-  const params = new URLSearchParams();
-  params.set('lang', 'id');
-  params.set('country', 'id');
-  params.set('max', String(limit));
-  params.set('apikey', key);
-
-  let url = '';
-
-  if (mode === 'search') {
-    url = `${base}/search`;
-    params.set('q', query);
-  } else {
-    url = `${base}/top-headlines`;
-    if (category && category !== 'general') params.set('topic', mapGNewsTopic(category));
-  }
-
-  const { data } = await axios.get(`${url}?${params.toString()}`, { timeout: 12000 });
-  const items = data?.articles || [];
-  return items.map(n => ({
-    title: n.title,
-    url: n.url,
-    source: n.source?.name,
-    publishedAt: n.publishedAt || n.published_at,
-    image: n.image || null
-  }));
-}
-
-function mapGNewsTopic(cat) {
-  // GNews topics: world, nation, business, technology, entertainment, sports, science, health
-  const map = {
-    general: 'nation',
-    business: 'business',
-    entertainment: 'entertainment',
-    health: 'health',
-    science: 'science',
-    sports: 'sports',
-    technology: 'technology'
-  };
-  return map[cat] || 'nation';
-}
-
-function timeAgo(iso) {
-  if (!iso) return '-';
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return '-';
-  const diff = Math.max(0, Date.now() - then);
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return 'baru saja';
-  if (m < 60) return `${m} mnt lalu`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h} jam lalu`;
-  const d = Math.floor(h / 24);
-  return `${d} hari lalu`;
-}
