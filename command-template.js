@@ -7,7 +7,7 @@ module.exports = {
     aliases: ['alias1', 'alias2'], // opsional
     description: 'Deskripsi command', // WAJIB: Deskripsi singkat command
     usage: 'namacommand [parameter]', // OPSIONAL: Cara penggunaan
-    category: 'general', // OPSIONAL: Kategori command (general, utility, fun, admin, etc.)
+    category: 'utility', // OPSIONAL: Kategori command (akan auto-detect dari folder, bisa override)
     
     // WAJIB: Function yang akan dijalankan ketika command dipanggil
     async execute(message, sock, args) {

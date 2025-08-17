@@ -4,7 +4,7 @@ Bot WhatsApp yang dibuat menggunakan Baileys dengan sistem command handler modul
 
 ## 🚀 Fitur
 
-- ✅ Command handler modular
+- ✅ Command handler modular dengan kategorisasi
 - ✅ Konfigurasi prefix melalui `.env` (support multi-prefix)
 - ✅ Auto-reload commands saat development (`npm run dev`)
 - ✅ Error handling
@@ -12,7 +12,7 @@ Bot WhatsApp yang dibuat menggunakan Baileys dengan sistem command handler modul
 - ✅ Support group dan private chat
 - ✅ Quick reply tanpa prefix
 - ✅ Command suggestion untuk typo
-- ✅ Sistem kategori command
+- ✅ Sistem kategori command dengan help yang terorganisir
 
 ## 📦 Instalasi
 
@@ -51,50 +51,46 @@ Bot WhatsApp yang dibuat menggunakan Baileys dengan sistem command handler modul
 
 ## 📝 Daftar Perintah
 
-Berikut adalah daftar perintah yang tersedia, dikelompokkan berdasarkan kategori.
+Bot sekarang menggunakan sistem kategorisasi yang terorganisir. Gunakan `!help` untuk melihat semua kategori atau `!help [kategori]` untuk melihat commands dalam kategori tertentu.
 
-### Utility
+### 🔧 Utility
 | Command | Description |
 |---|---|
 | `!ping` | Menguji kecepatan respon bot |
-| `!info` | Menampilkan informasi tentang bot |
 | `!help` | Menampilkan daftar semua perintah |
+| `!info` | Menampilkan informasi tentang bot |
 | `!bot` | Cek status bot |
 | `!echo [pesan]` | Mengulang pesan yang dikirim |
 | `!report [pesan]` | Melaporkan bug atau saran |
 
-### Islamic
+### 🕌 Islamic
 | Command | Description |
 |---|---|
 | `!doa` | Menampilkan doa-doa harian |
 | `!asmaulhusna` | Menampilkan Asmaul Husna |
 | `!jadwalsholat [kota]` | Menampilkan jadwal sholat untuk kota tertentu |
 
-### Information & Tools
+### 📊 Information & Tools
 | Command | Description |
 |---|---|
 | `!news` | Menampilkan berita lokal terkini |
 | `!crypto [simbol]` | Menampilkan harga cryptocurrency |
-| `!ssweb [url]` | Mengambil screenshot dari sebuah halaman web |
-| `!shorturl [url]` | Mempersingkat URL |
 | `!whois [domain]` | Menampilkan informasi WHOIS dari sebuah domain |
-| `!speedtest` | Menguji kecepatan koneksi internet server bot |
 | `!wiki [query]` | Mencari artikel di Wikipedia |
+| `!speedtest` | Menguji kecepatan koneksi internet server bot |
 | `!changelogs` | Menampilkan riwayat perubahan bot |
 
-### Translation & Language
-| Command | Description |
-|---|---|
-| `!translate [kode_bahasa] [teks]` | Menerjemahkan teks ke bahasa lain |
-| `!langcodes` | Menampilkan daftar kode bahasa untuk translasi |
-| `!tts [kode_bahasa] [teks]` | Mengubah teks menjadi pesan suara |
-
-### Media & Entertainment
+### 📱 Media
 | Command | Description |
 |---|---|
 | `!sticker` | Mengubah gambar menjadi stiker (kirim bersama gambar) |
 | `!toimg` | Mengubah stiker menjadi gambar (balas sebuah stiker) |
 | `!dl [url]` | Mengunduh konten dari URL (misal: YouTube) |
+| `!ssweb [url]` | Mengambil screenshot dari sebuah halaman web |
+
+### 🎮 Entertainment
+| Command | Description |
+|---|---|
 | `!meme` | Mengirimkan meme random |
 | `!quote` | Mengirimkan kutipan inspiratif |
 | `!pokemon [nama]` | Menampilkan informasi tentang Pokemon |
@@ -104,7 +100,7 @@ Berikut adalah daftar perintah yang tersedia, dikelompokkan berdasarkan kategori
 | `!dog` | Mengirimkan gambar anjing random |
 | `!fufufafa` | Mengirimkan gambar komentar fufufafa |
 
-### Games & Fun
+### 🎲 Games & Fun
 | Command | Description |
 |---|---|
 | `!jodoh [nama1] [nama2]` | Meramal kecocokan jodoh |
@@ -114,12 +110,22 @@ Berikut adalah daftar perintah yang tersedia, dikelompokkan berdasarkan kategori
 | `!slot` | Bermain mesin slot |
 | `!family100` | Game Family 100 |
 
-### Weather & Location
+### 🛠️ Tools
+| Command | Description |
+|---|---|
+| `!translate [kode_bahasa] [teks]` | Menerjemahkan teks ke bahasa lain |
+| `!langcodes` | Menampilkan daftar kode bahasa untuk translasi |
+| `!tts [kode_bahasa] [teks]` | Mengubah teks menjadi pesan suara |
+| `!qrcode [teks]` | Membuat QR code dari teks |
+| `!reminder [waktu] [pesan]` | Mengatur pengingat |
+| `!shorturl [url]` | Mempersingkat URL |
+
+### 🌤️ Weather
 | Command | Description |
 |---|---|
 | `!weather [kota]` | Menampilkan kondisi cuaca saat ini di kota tertentu |
 
-### Group Management
+### 👥 Group Management
 | Command | Description |
 |---|---|
 | `!tagall` | Mention semua anggota grup |
@@ -131,14 +137,14 @@ Berikut adalah daftar perintah yang tersedia, dikelompokkan berdasarkan kategori
 | `!qrcode [teks]` | Membuat QR code dari teks |
 | `!reminder [waktu] [pesan]` | Mengatur pengingat |
 
-### Owner
+### 👑 Owner
 | Command | Description |
 |---|---|
 | `!owner` | Informasi owner bot |
 
 ## 🔨 Cara Menambah Perintah Baru
 
-1.  Buat file JavaScript baru di dalam direktori `commands/`.
+1.  **Pilih kategori yang sesuai** dan buat file JavaScript baru di dalam direktori `commands/[kategori]/`.
 2.  Gunakan template dari `command-template.js` atau salin dari perintah yang sudah ada.
 3.  Struktur dasar perintah adalah sebagai berikut:
 
@@ -148,7 +154,7 @@ Berikut adalah daftar perintah yang tersedia, dikelompokkan berdasarkan kategori
         aliases: ['alias1', 'alias2'], // opsional
         description: 'Deskripsi singkat tentang apa yang dilakukan command ini.',
         usage: 'contoh penggunaan', // opsional
-        category: 'kategori', // opsional
+        category: 'kategori', // akan auto-detect dari folder, bisa override
         
         async execute(message, sock, args) {
             // Logika perintah Anda di sini
@@ -165,9 +171,14 @@ wabot/
 ├── commands/           # Folder untuk semua file perintah
 │   ├── utility/        # Perintah utilitas (ping, help, info, dll)
 │   ├── islamic/        # Perintah islami (jadwal sholat, doa, dll)
-│   ├── games/          # Perintah game dan hiburan
+│   ├── information/    # Perintah informasi (news, crypto, whois, dll)
 │   ├── media/          # Perintah media (sticker, download, dll)
-│   └── tools/          # Perintah tools (translate, qrcode, dll)
+│   ├── entertainment/  # Perintah hiburan (meme, quote, pokemon, dll)
+│   ├── games/          # Perintah game dan hiburan
+│   ├── tools/          # Perintah tools (translate, qrcode, dll)
+│   ├── weather/        # Perintah cuaca
+│   ├── group/          # Perintah manajemen grup
+│   └── owner/          # Perintah khusus owner
 ├── lib/                # Folder untuk modul/library bantuan
 │   ├── statsStore.js   # Penyimpanan statistik
 │   └── groupState.js   # State management untuk grup
@@ -183,6 +194,34 @@ wabot/
 ├── package.json        # Daftar dependensi dan skrip proyek
 └── README.md           # Dokumentasi proyek
 ```
+
+## 🆕 Fitur Kategorisasi Commands
+
+### Help System yang Terorganisir
+
+Bot sekarang memiliki sistem help yang lebih terorganisir:
+
+- `!help` - Menampilkan semua kategori dengan jumlah commands
+- `!help [kategori]` - Menampilkan commands dalam kategori tertentu
+- `!help [command]` - Menampilkan detail command tertentu
+
+### Auto-Category Detection
+
+Commands akan otomatis terdeteksi kategorinya berdasarkan folder tempat file berada. Anda juga bisa override dengan menambahkan property `category` di command.
+
+### Category Emojis
+
+Setiap kategori memiliki emoji yang unik untuk memudahkan identifikasi:
+- 🔧 Utility
+- 🕌 Islamic  
+- 📊 Information
+- 📱 Media
+- 🎮 Entertainment
+- 🎲 Games
+- 🛠️ Tools
+- 🌤️ Weather
+- 👥 Group
+- 👑 Owner
 
 ## ✨ Fitur Changelogs Otomatis
 
@@ -243,6 +282,9 @@ Jika user salah mengetik command, bot akan memberikan saran command yang mirip.
 
 ### Auto-Reload Development
 Gunakan `npm run dev` untuk development dengan auto-reload saat ada perubahan file.
+
+### Recursive Command Loading
+Bot sekarang dapat memuat commands dari subfolder secara rekursif, memungkinkan organisasi yang lebih baik.
 
 ---
 

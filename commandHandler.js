@@ -74,6 +74,10 @@ class CommandHandler {
     this.commands = new Map();
     // Simpan set unik command objects buat listing help (biar alias gak dobel)
     this._uniqueCommands = new Set();
+    // Map untuk menyimpan commands berdasarkan kategori
+    this.commandsByCategory = new Map();
+    // Array untuk menyimpan urutan kategori
+    this.categoryOrder = [];
 
     // ====== Quick Replies config ======
     // Bisa override lewat file: ./data/quickReplies.json (array of {match, reply})
@@ -177,7 +181,44 @@ class CommandHandler {
   }
 
   /**
-   * Load all commands from the commands directory
+   * Recursively scan directory for command files
+   * @param {string} dir - Directory to scan
+   * @param {string} category - Category name (from folder name)
+   * @returns {Array} Array of command file paths with their categories
+   */
+  _scanCommandFiles(dir, category = null) {
+    const files = [];
+    
+    if (!fs.existsSync(dir)) {
+      return files;
+    }
+
+    const items = fs.readdirSync(dir);
+    
+    for (const item of items) {
+      const fullPath = path.join(dir, item);
+      const stat = fs.statSync(fullPath);
+      
+      if (stat.isDirectory()) {
+        // Recursively scan subdirectories
+        const subCategory = category ? `${category}/${item}` : item;
+        const subFiles = this._scanCommandFiles(fullPath, subCategory);
+        files.push(...subFiles);
+      } else if (item.endsWith('.js')) {
+        // Found a command file
+        files.push({
+          path: fullPath,
+          category: category || 'uncategorized',
+          filename: item
+        });
+      }
+    }
+    
+    return files;
+  }
+
+  /**
+   * Load all commands from the commands directory (recursive)
    */
   loadCommands() {
     const commandsDir = path.join(__dirname, "commands");
@@ -187,59 +228,89 @@ class CommandHandler {
       return;
     }
 
-    const commandFiles = fs
-      .readdirSync(commandsDir)
-      .filter((f) => f.endsWith(".js"));
+    // Scan all command files recursively
+    const commandFiles = this._scanCommandFiles(commandsDir);
     let loadedKeys = 0;
 
-    for (const file of commandFiles) {
-      const full = path.join(commandsDir, file);
+    // Initialize category maps
+    this.commandsByCategory.clear();
+    this.categoryOrder = [];
+
+    for (const fileInfo of commandFiles) {
       try {
-        const command = require(full);
+        const command = require(fileInfo.path);
 
         if (
           !command ||
           typeof command.execute !== "function" ||
           !command.name
         ) {
-          console.log(`❌ Invalid command structure in ${file}`);
+          console.log(`❌ Invalid command structure in ${fileInfo.filename}`);
           continue;
         }
 
         const name = String(command.name).toLowerCase();
+        
+        // Auto-detect category from folder if not specified
+        if (!command.category) {
+          command.category = fileInfo.category;
+        }
 
-        // Daftar nama utama
-        this._registerKey(name, command, file);
+        // Register command
+        this._registerKey(name, command, fileInfo.filename, fileInfo.category);
 
-        // Daftar aliases (opsional)
+        // Register aliases (optional)
         if (Array.isArray(command.aliases)) {
           for (const al of command.aliases) {
             if (!al) continue;
             const alias = String(al).toLowerCase();
-            this._registerKey(alias, command, file, true);
+            this._registerKey(alias, command, fileInfo.filename, fileInfo.category, true);
           }
         }
 
-        // Track unik command object (buat getCommands)
+        // Track unique command object (for getCommands)
         this._uniqueCommands.add(command);
+        
+        // Organize by category
+        this._organizeByCategory(command, fileInfo.category);
+        
         loadedKeys++;
       } catch (err) {
-        console.log(`❌ Error loading command ${file}:`, err.message);
+        console.log(`❌ Error loading command ${fileInfo.filename}:`, err.message);
       }
     }
 
     console.log(`📦 Total keys loaded (names+aliases): ${this.commands.size}`);
     console.log(`✅ Unique commands: ${this._uniqueCommands.size}`);
+    console.log(`📁 Categories: ${this.categoryOrder.join(', ')}`);
   }
 
-  _registerKey(key, command, file, isAlias = false) {
+  /**
+   * Organize command by category
+   * @param {Object} command - Command object
+   * @param {string} category - Category name
+   */
+  _organizeByCategory(command, category) {
+    if (!this.commandsByCategory.has(category)) {
+      this.commandsByCategory.set(category, []);
+      this.categoryOrder.push(category);
+    }
+    
+    // Check if command already exists in category
+    const existingIndex = this.commandsByCategory.get(category).findIndex(cmd => cmd.name === command.name);
+    if (existingIndex === -1) {
+      this.commandsByCategory.get(category).push(command);
+    }
+  }
+
+  _registerKey(key, command, file, category, isAlias = false) {
     if (this.commands.has(key)) {
       const tag = isAlias ? "alias" : "name";
       console.warn(`⚠️ Duplicate ${tag} "${key}" in ${file}. Key skipped.`);
       return;
     }
     this.commands.set(key, command);
-    console.log(`✅ Loaded ${isAlias ? "alias" : "command"}: ${key}`);
+    console.log(`✅ Loaded ${isAlias ? "alias" : "command"}: ${key} (${category})`);
   }
 
   /**
@@ -257,6 +328,8 @@ class CommandHandler {
 
     this.commands.clear();
     this._uniqueCommands.clear();
+    this.commandsByCategory.clear();
+    this.categoryOrder = [];
     this.loadCommands();
   }
 
@@ -337,6 +410,34 @@ class CommandHandler {
    */
   getCommands() {
     return Array.from(this._uniqueCommands.values());
+  }
+
+  /**
+   * Get commands by category
+   * @param {string} category - Category name
+   * @returns {Array} Array of commands in the category
+   */
+  getCommandsByCategory(category) {
+    return this.commandsByCategory.get(category) || [];
+  }
+
+  /**
+   * Get all categories
+   * @returns {Array} Array of category names
+   */
+  getCategories() {
+    return this.categoryOrder;
+  }
+
+  /**
+   * Get category info with command count
+   * @returns {Array} Array of category objects with name and count
+   */
+  getCategoryInfo() {
+    return this.categoryOrder.map(category => ({
+      name: category,
+      count: this.commandsByCategory.get(category)?.length || 0
+    }));
   }
 
   /**

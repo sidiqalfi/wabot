@@ -11,7 +11,7 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { setState } = require('../lib/groupState');
+const { setState } = require('../../lib/groupState');
 
 module.exports = {
   name: 'bot',

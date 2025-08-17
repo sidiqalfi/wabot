@@ -14,6 +14,7 @@ module.exports = {
       const changelogPath = path.join(
         __dirname,
         "..",
+        "..",
         "data",
         "changelogs.txt",
       );

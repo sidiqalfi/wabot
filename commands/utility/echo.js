@@ -2,7 +2,7 @@ module.exports = {
     name: 'echo',
     description: 'Mengulangi pesan yang dikirim',
     usage: 'echo <pesan>',
-    category: 'utility',
+    category: 'tools',
     
     async execute(message, sock, args) {
         if (args.length === 0) {
