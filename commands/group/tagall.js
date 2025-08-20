@@ -4,7 +4,7 @@ module.exports = {
     name: 'tagall',
     description: 'Mention semua member di grup (admin-only)',
     usage: 'tagall [pesan opsional]',
-    category: 'admin',
+    category: 'group',
 
     async execute(message, sock, args) {
         try {
@@ -18,17 +18,25 @@ module.exports = {
             // Ambil metadata grup
             const metadata = await sock.groupMetadata(remoteJid);
             const participants = metadata.participants || [];
-            const admins = participants.filter(p => p.admin);
             const senderJid = message.key.participant || message.key.remoteJid;
 
-            const isSenderAdmin = admins.some(a => a.id === senderJid);
-            const isBotAdmin = admins.some(a => a.id === (sock.user?.id));
+            // Periksa apakah bot adalah admin
+            const botId = sock.user.lid;
+            const botIdTrim = botId.replace(/:\d+/, "");
+            const botIsAdmin = metadata.participants
+              .find((p) => p.id === botIdTrim)
+              ?.admin?.includes("admin");
+              
+            // Periksa apakah pengirim adalah admin
+            const senderIsAdmin = metadata.participants
+              .find((p) => p.id === senderJid)
+              ?.admin?.includes("admin");
 
-            if (!isSenderAdmin) {
+            if (!senderIsAdmin) {
                 await sock.sendMessage(remoteJid, { text: '⛔ *Admin-only.* Minta admin yang jalankan ya.' });
                 return;
             }
-            if (!isBotAdmin) {
+            if (!botIsAdmin) {
                 await sock.sendMessage(remoteJid, { text: '⚠️ Bot belum *admin*. Jadikan admin dulu agar mention massal lebih stabil.' });
             }
 
