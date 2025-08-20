@@ -128,8 +128,17 @@ Bot sekarang menggunakan sistem kategorisasi yang terorganisir. Gunakan `!help` 
 ### 👥 Group Management
 | Command | Description |
 |---|---|
-| `!tagall` | Mention semua anggota grup |
-| `!rules` | Menampilkan aturan grup |
+| `!tagall` | Mention semua anggota grup (hanya untuk admin grup) |
+| `!rules` | Menampilkan aturan menggunakan bot |
+| `!promote @user` | Mengangkat member menjadi admin (hanya untuk admin grup) |
+| `!demote @user` | Menurunkan jabatan admin menjadi member (hanya untuk admin grup) |
+| `!kick @user` | Mengeluarkan member dari grup (hanya untuk admin grup) |
+| `!add [nomor]` | Menambahkan member ke grup (hanya untuk admin grup) |
+| `!leave` | Membuat bot keluar dari grup (hanya untuk admin grup) |
+| `!setgroupname [nama baru]` | Mengganti nama grup (hanya untuk admin grup) |
+| `!setgroupdesc [deskripsi baru]` | Mengganti deskripsi grup (hanya untuk admin grup) |
+| `!opengroup` | Membuka grup (memungkinkan semua member mengirim pesan) (hanya untuk admin grup) |
+| `!closegroup` | Menutup grup (hanya admin yang bisa mengirim pesan) (hanya untuk admin grup) |
 
 ### Tools
 | Command | Description |
