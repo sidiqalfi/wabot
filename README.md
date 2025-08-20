@@ -141,8 +141,30 @@ Bot sekarang menggunakan sistem kategorisasi yang terorganisir. Gunakan `!help` 
 | Command | Description |
 |---|---|
 | `!owner` | Informasi owner bot |
+| `!blacklist` | Mengelola daftar kontak yang diblokir (add/remove/list) |
 
-## 🔨 Cara Menambah Perintah Baru
+## 🔒 Blacklist Feature
+
+Bot ini memiliki fitur blacklist yang memungkinkan owner untuk memblokir kontak tertentu. Fitur ini juga secara otomatis memblokir kontak yang menelepon bot.
+
+### Penggunaan:
+
+- `!blacklist add [nomor]` - Memblokir kontak
+- `!blacklist remove [nomor]` - Membuka blokir kontak
+- `!blacklist list` - Melihat daftar blacklist
+
+### Contoh:
+
+- `!blacklist add 6281234567890`
+- `!blacklist remove 6281234567890`
+- `!blacklist list`
+
+### Fitur Otomatis:
+
+Ketika seseorang menelepon bot, mereka akan:
+1. Menerima pesan peringatan
+2. Diblokir secara otomatis
+3. Nomor mereka disimpan dalam database blacklist
 
 1.  **Pilih kategori yang sesuai** dan buat file JavaScript baru di dalam direktori `commands/[kategori]/`.
 2.  Gunakan template dari `command-template.js` atau salin dari perintah yang sudah ada.

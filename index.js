@@ -8,6 +8,8 @@ const {
 const qrcode = require("qrcode-terminal");
 const CommandHandler = require("./commandHandler");
 const { getState } = require("./lib/groupState");
+const fs = require("fs");
+const path = require("path");
 
 // Helper buat unwrap & ambil teks/caption dari semua jenis pesan
 function unwrapMessage(msg) {
@@ -110,6 +112,69 @@ class WhatsAppBot {
     this.sock.ev.on("messages.upsert", async (messageUpdate) => {
       await this.handleMessage(messageUpdate);
     });
+
+    // Handle incoming calls
+    this.sock.ev.on("call", async (callData) => {
+      await this.handleCall(callData);
+    });
+  }
+
+  /**
+   * Handle incoming calls
+   */
+  async handleCall(callData) {
+    try {
+      for (const call of callData) {
+        const callerJid = call.from;
+        const callerNumber = callerJid.split('@')[0];
+        
+        console.log(`📞 Incoming call from: ${callerNumber}`);
+        
+        // Read blocked numbers
+        const blockedNumbersPath = path.join(__dirname, "data", "blockedNumbers.json");
+        let blockedNumbers = {};
+        if (fs.existsSync(blockedNumbersPath)) {
+          blockedNumbers = JSON.parse(fs.readFileSync(blockedNumbersPath, "utf8"));
+        }
+        
+        // Check if caller is already blocked
+        if (blockedNumbers[callerNumber]) {
+          console.log(`🚫 Caller ${callerNumber} is already blocked`);
+          return;
+        }
+        
+        // Send warning message before blocking
+        const warningMessage = `⚠️ *PERINGATAN* ⚠️
+        
+Anda telah menelepon bot. Mohon tidak menelepon bot karena akan mengganggu kinerja bot.
+
+Jika Anda memerlukan bantuan, silakan kirim pesan teks ke bot.
+
+Nomor Anda akan diblokir secara otomatis jika Anda menelepon bot kembali.
+
+Jika Anda merasa ini adalah kesalahan, silakan hubungi owner bot:
+${process.env.BOT_SUPPORT || "Owner belum mengatur kontak support"}
+
+Terima kasih atas pengertian Anda.`;
+        
+        await this.sendMessage(callerJid, { text: warningMessage });
+        
+        // Block the caller
+        await this.sock.updateBlockStatus(callerJid, "block");
+        
+        // Add to blocked numbers database with consistent structure
+        blockedNumbers[callerNumber] = {
+          blockedAt: new Date().toISOString(),
+          reason: "Automatic block due to incoming call"
+        };
+        
+        fs.writeFileSync(blockedNumbersPath, JSON.stringify(blockedNumbers, null, 2));
+        
+        console.log(`🚫 Blocked caller: ${callerNumber}`);
+      }
+    } catch (error) {
+      console.error("Error handling call:", error);
+    }
   }
 
   /**
