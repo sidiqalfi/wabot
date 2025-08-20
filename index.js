@@ -7,11 +7,17 @@ const {
 } = require("baileys");
 const qrcode = require("qrcode-terminal");
 const CommandHandler = require("./commandHandler");
+const ContentFilter = require("./lib/ContentFilter"); // Import ContentFilter
 const { getState } = require("./lib/groupState");
 const fs = require("fs");
 const path = require("path");
 
-// Helper buat unwrap & ambil teks/caption dari semua jenis pesan
+/**
+ * Membongkar pesan untuk mendapatkan konten sebenarnya
+ * Menangani berbagai jenis pesan seperti ephemeral, viewOnce, dll.
+ * @param {Object} msg - Objek pesan
+ * @returns {Object} - Objek pesan yang telah dibongkar
+ */
 function unwrapMessage(msg) {
   let m = msg.message;
   if (m?.ephemeralMessage) m = m.ephemeralMessage.message;
@@ -21,6 +27,11 @@ function unwrapMessage(msg) {
   return m || msg.message;
 }
 
+/**
+ * Mengekstrak teks dari berbagai jenis pesan
+ * @param {Object} msg - Objek pesan
+ * @returns {string} - Teks yang diekstrak dari pesan
+ */
 function extractTextFromAny(msg) {
   const m = unwrapMessage(msg) || {};
   return (
@@ -33,43 +44,47 @@ function extractTextFromAny(msg) {
   );
 }
 
+/**
+ * Kelas utama untuk bot WhatsApp
+ * Mengelola koneksi, penanganan pesan, dan eksekusi perintah
+ */
 class WhatsAppBot {
   constructor() {
     this.commandHandler = new CommandHandler();
     this.prefix = process.env.PREFIX || "!";
     this.botName = process.env.BOT_NAME || "WhatsApp Bot";
     this.sock = null;
-
-    // ⬇️ NEW: daftar prefix (multi / legacy)
     this.prefixes = this._resolvePrefixes();
+
+    // Inisialisasi ContentFilter
+    this.contentFilter = new ContentFilter(
+      path.join(__dirname, "data", "forbiddenWords.json"),
+    );
   }
 
   /**
    * Build daftar prefix dari env (comma-separated) + legacy this.prefix
-   * - .env: PREFIX="/,.,&,*"
-   * - Legacy: kalau cuma 1 nilai (mis. "/"), tetap dimasukkan.
    */
   _resolvePrefixes() {
     const raw = String(process.env.PREFIX || this.prefix || "!").split(",");
     const arr = raw.map((p) => p.trim()).filter(Boolean);
-    // Pastikan legacy this.prefix ikut masuk (kalau belum ada)
     if (!arr.includes(this.prefix)) arr.unshift(this.prefix);
-    // Uniq
     return [...new Set(arr)];
   }
 
   /**
-   * Initialize the bot
+   * Inisialisasi bot
+   * Menampilkan informasi awal dan memulai koneksi
    */
   async initialize() {
     console.log(`🤖 Starting ${this.botName}...`);
-    console.log(`🔧 Using prefix: ${this.prefixes.join(" ")}`); // was: this.prefix
-
+    console.log(`🔧 Using prefix: ${this.prefixes.join(" ")}`);
     await this.createConnection();
   }
 
   /**
-   * Create WhatsApp connection
+   * Membuat koneksi ke WhatsApp
+   * Mengatur event listener untuk koneksi, kredensial, pesan, dan panggilan
    */
   async createConnection() {
     const { state, saveCreds } = await useMultiFileAuthState("auth_info");
@@ -80,21 +95,17 @@ class WhatsAppBot {
       logger: require("pino")({ level: "silent" }),
     });
 
-    // Handle QR code
     this.sock.ev.on("connection.update", async (update) => {
       const { connection, lastDisconnect, qr } = update;
-
       if (qr) {
         console.log("📱 Scan QR code below:");
         qrcode.generate(qr, { small: true });
       }
-
       if (connection === "close") {
         const shouldReconnect =
           lastDisconnect?.error?.output?.statusCode !==
           DisconnectReason.loggedOut;
         console.log("❌ Connection closed due to:", lastDisconnect.error);
-
         if (shouldReconnect) {
           console.log("🔄 Reconnecting...");
           await this.createConnection();
@@ -105,45 +116,45 @@ class WhatsAppBot {
       }
     });
 
-    // Save credentials
     this.sock.ev.on("creds.update", saveCreds);
-
-    // Handle incoming messages
     this.sock.ev.on("messages.upsert", async (messageUpdate) => {
       await this.handleMessage(messageUpdate);
     });
-
-    // Handle incoming calls
     this.sock.ev.on("call", async (callData) => {
       await this.handleCall(callData);
     });
   }
 
   /**
-   * Handle incoming calls
+   * Menangani panggilan masuk
+   * Memblokir nomor yang menelepon dan mengirim pesan peringatan
+   * @param {Array} callData - Data panggilan
    */
   async handleCall(callData) {
     try {
       for (const call of callData) {
         const callerJid = call.from;
-        const callerNumber = callerJid.split('@')[0];
-        
+        const callerNumber = callerJid.split("@")[0];
+
         console.log(`📞 Incoming call from: ${callerNumber}`);
-        
-        // Read blocked numbers
-        const blockedNumbersPath = path.join(__dirname, "data", "blockedNumbers.json");
+
+        const blockedNumbersPath = path.join(
+          __dirname,
+          "data",
+          "blockedNumbers.json",
+        );
         let blockedNumbers = {};
         if (fs.existsSync(blockedNumbersPath)) {
-          blockedNumbers = JSON.parse(fs.readFileSync(blockedNumbersPath, "utf8"));
+          blockedNumbers = JSON.parse(
+            fs.readFileSync(blockedNumbersPath, "utf8"),
+          );
         }
-        
-        // Check if caller is already blocked
+
         if (blockedNumbers[callerNumber]) {
           console.log(`🚫 Caller ${callerNumber} is already blocked`);
           return;
         }
-        
-        // Send warning message before blocking
+
         const warningMessage = `⚠️ *PERINGATAN* ⚠️
         
 Anda telah menelepon bot. Mohon tidak menelepon bot karena akan mengganggu kinerja bot.
@@ -156,20 +167,21 @@ Jika Anda merasa ini adalah kesalahan, silakan hubungi owner bot:
 ${process.env.BOT_SUPPORT || "Owner belum mengatur kontak support"}
 
 Terima kasih atas pengertian Anda.`;
-        
+
         await this.sendMessage(callerJid, { text: warningMessage });
-        
-        // Block the caller
+
         await this.sock.updateBlockStatus(callerJid, "block");
-        
-        // Add to blocked numbers database with consistent structure
+
         blockedNumbers[callerNumber] = {
           blockedAt: new Date().toISOString(),
-          reason: "Automatic block due to incoming call"
+          reason: "Automatic block due to incoming call",
         };
-        
-        fs.writeFileSync(blockedNumbersPath, JSON.stringify(blockedNumbers, null, 2));
-        
+
+        fs.writeFileSync(
+          blockedNumbersPath,
+          JSON.stringify(blockedNumbers, null, 2),
+        );
+
         console.log(`🚫 Blocked caller: ${callerNumber}`);
       }
     } catch (error) {
@@ -178,7 +190,9 @@ Terima kasih atas pengertian Anda.`;
   }
 
   /**
-   * Handle incoming messages
+   * Menangani pesan masuk
+   * Memfilter konten, mengeksekusi perintah, dan memberikan saran jika perintah tidak ditemukan
+   * @param {Object} messageUpdate - Update pesan
    */
   async handleMessage(messageUpdate) {
     const { messages } = messageUpdate;
@@ -189,19 +203,65 @@ Terima kasih atas pengertian Anda.`;
         if (!jid || jid === "status@broadcast") continue;
         if (message.key.fromMe) continue;
 
-        // Ambil teks dari conversation / extended / caption media
         const text = extractTextFromAny(message);
         if (!text) continue;
 
-        // 1) Quick reply tanpa prefix (mis. "selamat pagi")
-        //    pastikan CommandHandler kamu sudah ada method tryQuickReply()
+        const isGroup = jid.endsWith("@g.us");
+        const sender = jidNormalizedUser(
+          message.key.participant || message.key.remoteJid,
+        );
+
+        // --- START: Content Filtering Logic ---
+        const forbiddenWord = this.contentFilter.getForbiddenWord(text);
+        if (forbiddenWord) {
+          console.log(
+            `🚫 Forbidden word "${forbiddenWord}" detected from ${sender} in ${jid}`,
+          );
+
+          if (isGroup) {
+            try {
+              const metadata = await this.sock.groupMetadata(jid);
+              const botId = this.sock.user.lid;
+              const botIdTrim = botId.replace(/:\d+/, "");
+              const botIsAdmin = metadata.participants
+                .find((p) => p.id === botIdTrim)
+                ?.admin?.includes("admin");
+
+              if (botIsAdmin) {
+                await this.sock.sendMessage(jid, { delete: message.key });
+                await this.sock.sendMessage(jid, {
+                  text: `⚠️ Mohon jangan gunakan kata-kata yang tidak pantas.`,
+                });
+                console.log(`🗑️ Message deleted in group ${jid}`);
+                await this.sock.sendMessage(sender, {
+                  text: `⚠️ Pesan Anda di grup *${metadata.subject}* telah dihapus karena mengandung kata yang dilarang: "${forbiddenWord}"`,
+                });
+              } else {
+                await this.sock.sendMessage(jid, {
+                  text: `⚠️ Tolong jadikan admin bot terlebih dahulu untuk menghapus pesan ini.`,
+                });
+                console.log(
+                  `⚠️ Bot is not admin in ${jid}, cannot delete message.`,
+                );
+              }
+            } catch (err) {
+              console.error("Error in content filtering (group):", err);
+            }
+          } else {
+            await this.sock.sendMessage(jid, {
+              text: `⚠️ Mohon jangan gunakan kata-kata yang tidak pantas. Kata terdeteksi: "${forbiddenWord}"`,
+            });
+          }
+          continue; // Hentikan pemrosesan pesan ini lebih lanjut
+        }
+        // --- END: Content Filtering Logic ---
+
         const handled = await this.commandHandler.tryQuickReply(
           message,
           this.sock,
         );
-        if (handled) continue; // sudah dibalas → skip command parsing
+        if (handled) continue;
 
-        // 2) Command parsing (multi-prefix)
         const usedPrefix = this.prefixes.find((p) => text.startsWith(p));
         if (!usedPrefix) continue;
 
@@ -211,11 +271,6 @@ Terima kasih atas pengertian Anda.`;
         const parts = withoutPrefix.split(/\s+/);
         const commandName = (parts.shift() || "").toLowerCase();
         const args = parts;
-
-        const isGroup = jid.endsWith("@g.us");
-        const sender = jidNormalizedUser(
-          message.key.participant || message.key.remoteJid,
-        );
 
         console.log(
           `📝 Command used: ${commandName} | User: ${sender} | Group: ${isGroup ? "Yes" : "No"}`,
@@ -229,8 +284,8 @@ Terima kasih atas pengertian Anda.`;
         );
 
         if (!executed) {
-          const groupState = isGroup ? getState(jid) : 'on';
-          if (groupState === 'on') {
+          const groupState = isGroup ? getState(jid) : "on";
+          if (groupState === "on") {
             const suggestion = this.commandHandler.getSuggestion(commandName);
             if (suggestion) {
               await this.sendMessage(jid, {
@@ -240,14 +295,16 @@ Terima kasih atas pengertian Anda.`;
               });
             } else {
               await this.sendMessage(jid, {
-                text: `❌ Command "${commandName}" not found!`, 
+                text: `❌ Command "${commandName}" not found!`,
               });
             }
             console.log(
               `❓ Unknown command: ${commandName} ${suggestion ? `(suggest: ${suggestion})` : ""}`,
             );
           } else {
-            console.log(`[index] Bot is OFF in group ${jid}. Suppressing suggestion for '${commandName}'.`);
+            console.log(
+              `[index] Bot is OFF in group ${jid}. Suppressing suggestion for '${commandName}'.`,
+            );
           }
         }
       } catch (err) {
@@ -257,7 +314,10 @@ Terima kasih atas pengertian Anda.`;
   }
 
   /**
-   * Send a message
+   * Mengirim pesan ke pengguna atau grup
+   * @param {string} jid - ID tujuan (JID)
+   * @param {Object} content - Konten pesan
+   * @returns {Promise<Object>} - Hasil pengiriman pesan
    */
   async sendMessage(jid, content) {
     try {
@@ -268,7 +328,7 @@ Terima kasih atas pengertian Anda.`;
   }
 
   /**
-   * Reload commands (useful for development)
+   * Memuat ulang daftar perintah (berguna saat development)
    */
   reloadCommands() {
     this.commandHandler.reloadCommands();
@@ -276,7 +336,8 @@ Terima kasih atas pengertian Anda.`;
   }
 
   /**
-   * Get bot status
+   * Mendapatkan status bot
+   * @returns {Object} - Status bot
    */
   getStatus() {
     return {
