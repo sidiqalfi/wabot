@@ -134,11 +134,13 @@ Bot sekarang menggunakan sistem kategorisasi yang terorganisir. Gunakan `!help` 
 | `!demote @user` | Menurunkan jabatan admin menjadi member (hanya untuk admin grup) |
 | `!kick @user` | Mengeluarkan member dari grup (hanya untuk admin grup) |
 | `!add [nomor]` | Menambahkan member ke grup (hanya untuk admin grup) |
-| `!leave` | Membuat bot keluar dari grup (hanya untuk admin grup) |
+| `!out` | Membuat bot keluar dari grup (hanya untuk admin grup) |
 | `!setgroupname [nama baru]` | Mengganti nama grup (hanya untuk admin grup) |
 | `!setgroupdesc [deskripsi baru]` | Mengganti deskripsi grup (hanya untuk admin grup) |
 | `!opengroup` | Membuka grup (memungkinkan semua member mengirim pesan) (hanya untuk admin grup) |
 | `!closegroup` | Menutup grup (hanya admin yang bisa mengirim pesan) (hanya untuk admin grup) |
+| `!setwelcome [pesan|on|off]` | Mengatur pesan selamat datang untuk grup. |
+| `!setleave [pesan|on|off]` | Mengatur pesan perpisahan untuk grup. |
 
 ### Tools
 | Command | Description |

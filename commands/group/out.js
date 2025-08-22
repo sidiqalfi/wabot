@@ -1,7 +1,7 @@
 module.exports = {
-  name: 'leave',
+  name: 'out',
   description: 'Membuat bot keluar dari grup (hanya untuk admin grup)',
-  usage: '!leave',
+  usage: '!out',
   category: 'group',
   async execute(message, sock, args) {
     const { key, pushName } = message;

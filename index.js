@@ -123,6 +123,12 @@ class WhatsAppBot {
     this.sock.ev.on("call", async (callData) => {
       await this.handleCall(callData);
     });
+    this.sock.ev.on(
+      "group-participants.update",
+      async (groupUpdate) => {
+        await this.handleGroupParticipantsUpdate(groupUpdate);
+      },
+    );
   }
 
   /**
@@ -186,6 +192,63 @@ Terima kasih atas pengertian Anda.`;
       }
     } catch (error) {
       console.error("Error handling call:", error);
+    }
+  }
+
+  /**
+   * Menangani pembaruan partisipan grup (welcome/leave)
+   * @param {Object} groupUpdate - Data pembaruan grup
+   */
+  async handleGroupParticipantsUpdate(groupUpdate) {
+    const { id, participants, action } = groupUpdate;
+    const groupJid = id;
+
+    try {
+      const groupSettingsPath = path.join(
+        __dirname,
+        "data",
+        "groupSettings.json",
+      );
+      let groupSettings = {};
+      if (fs.existsSync(groupSettingsPath)) {
+        groupSettings = JSON.parse(
+          fs.readFileSync(groupSettingsPath, "utf8"),
+        );
+      }
+
+      const settings = groupSettings[groupJid] || {};
+      const welcomeMessage =
+        settings.welcome || "Selamat datang @user di grup {groupName}!";
+      const leaveMessage = settings.leave || "Selamat tinggal @user!";
+      const welcomeEnabled = settings.welcomeEnabled !== false; // default to true
+      const leaveEnabled = settings.leaveEnabled !== false; // default to true
+
+      const metadata = await this.sock.groupMetadata(groupJid);
+      const groupName = metadata.subject;
+
+      for (const userJid of participants) {
+        const userMention = `@${userJid.split("@")[0]}`;
+        let messageText = "";
+
+        if (action === "add" && welcomeEnabled) {
+          messageText = welcomeMessage
+            .replace(/@user/g, userMention)
+            .replace(/{groupName}/g, groupName);
+        } else if (action === "remove" && leaveEnabled) {
+          messageText = leaveMessage
+            .replace(/@user/g, userMention)
+            .replace(/{groupName}/g, groupName);
+        }
+
+        if (messageText) {
+          await this.sock.sendMessage(groupJid, {
+            text: messageText,
+            mentions: [userJid],
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error in handleGroupParticipantsUpdate:", error);
     }
   }
 
