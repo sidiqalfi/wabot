@@ -153,6 +153,7 @@ Bot sekarang menggunakan sistem kategorisasi yang terorganisir. Gunakan `!help` 
 |---|---|
 | `!owner` | Informasi owner bot |
 | `!blacklist` | Mengelola daftar kontak yang diblokir (add/remove/list) |
+| `!delay` | Mengatur delay command untuk pengguna bot |
 
 ## 🔒 Blacklist Feature
 
@@ -169,6 +170,26 @@ Bot ini memiliki fitur blacklist yang memungkinkan owner untuk memblokir kontak 
 - `!blacklist add 6281234567890`
 - `!blacklist remove 6281234567890`
 - `!blacklist list`
+
+### Command Delay Feature
+
+Bot ini memiliki fitur delay command yang memungkinkan owner untuk mengatur jeda waktu antar penggunaan command. Fitur ini berguna untuk mencegah spam dan mengatur beban server.
+
+### Penggunaan:
+
+- `!delay` - Melihat pengaturan delay saat ini
+- `!delay on` - Mengaktifkan delay command
+- `!delay off` - Menonaktifkan delay command
+- `!delay seconds [angka]` - Mengatur durasi delay dalam detik
+- `!delay mode [owner|all]` - Mengatur mode delay (owner: hanya untuk non-owner, all: untuk semua user)
+- `!delay test` - Test sistem delay
+
+### Contoh:
+
+- `!delay on`
+- `!delay seconds 10`
+- `!delay mode all`
+- `!delay test`
 
 ### Fitur Otomatis:
 

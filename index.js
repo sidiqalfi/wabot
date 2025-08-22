@@ -9,6 +9,7 @@ const qrcode = require("qrcode-terminal");
 const CommandHandler = require("./commandHandler");
 const ContentFilter = require("./lib/ContentFilter"); // Import ContentFilter
 const { getState } = require("./lib/groupState");
+const commandDelay = require("./lib/commandDelay"); // Import CommandDelay
 const fs = require("fs");
 const path = require("path");
 
@@ -339,12 +340,29 @@ Terima kasih atas pengertian Anda.`;
           `📝 Command used: ${commandName} | User: ${sender} | Group: ${isGroup ? "Yes" : "No"}`,
         );
 
+        // Check command delay
+        const botSupport = process.env.BOT_SUPPORT ? process.env.BOT_SUPPORT.split(',') : [];
+        const delayCheck = commandDelay.checkDelay(sender, botSupport);
+        
+        if (delayCheck.shouldDelay) {
+          // Send delay notification to user
+          await this.sendMessage(jid, {
+            text: delayCheck.message
+          });
+          continue; // Skip command execution
+        }
+
         const executed = await this.commandHandler.executeCommand(
           commandName,
           message,
           this.sock,
           args,
         );
+
+        // Update last command time if command was executed
+        if (executed) {
+          commandDelay.updateLastCommandTime(sender);
+        }
 
         if (!executed) {
           const groupState = isGroup ? getState(jid) : "on";
