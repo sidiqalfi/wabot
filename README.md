@@ -140,6 +140,7 @@ Bot sekarang menggunakan sistem kategorisasi yang terorganisir. Gunakan `!help` 
 | `!warn @user [alasan]` | Memberikan peringatan kepada member (hanya untuk admin grup) |
 | `!unwarn @user [jumlah]` | Menghapus peringatan dari member (hanya untuk admin grup) |
 | `!warnings [@user]` | Melihat status peringatan member grup |
+| `!link` | Mendapatkan link invite grup |
 | `!add [nomor]` | Menambahkan member ke grup (hanya untuk admin grup) |
 | `!out` | Membuat bot keluar dari grup (hanya untuk admin grup) |
 | `!setgroupname [nama baru]` | Mengganti nama grup (hanya untuk admin grup) |
