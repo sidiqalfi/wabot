@@ -137,6 +137,9 @@ Bot sekarang menggunakan sistem kategorisasi yang terorganisir. Gunakan `!help` 
 | `!promote @user` | Mengangkat member menjadi admin (hanya untuk admin grup) |
 | `!demote @user` | Menurunkan jabatan admin menjadi member (hanya untuk admin grup) |
 | `!kick @user` | Mengeluarkan member dari grup (hanya untuk admin grup) |
+| `!warn @user [alasan]` | Memberikan peringatan kepada member (hanya untuk admin grup) |
+| `!unwarn @user [jumlah]` | Menghapus peringatan dari member (hanya untuk admin grup) |
+| `!warnings [@user]` | Melihat status peringatan member grup |
 | `!add [nomor]` | Menambahkan member ke grup (hanya untuk admin grup) |
 | `!out` | Membuat bot keluar dari grup (hanya untuk admin grup) |
 | `!setgroupname [nama baru]` | Mengganti nama grup (hanya untuk admin grup) |
@@ -174,6 +177,30 @@ Bot ini memiliki fitur blacklist yang memungkinkan owner untuk memblokir kontak 
 - `!blacklist add 6281234567890`
 - `!blacklist remove 6281234567890`
 - `!blacklist list`
+
+### Warning System Feature
+
+Bot ini memiliki sistem peringatan (warning) yang memungkinkan admin grup untuk mengelola member yang melanggar aturan. Sistem ini otomatis mengeluarkan member setelah 3 peringatan.
+
+#### Penggunaan Warning System:
+
+- `!warn @user [alasan]` - Memberikan peringatan kepada member
+- `!unwarn @user [jumlah]` - Menghapus peringatan dari member
+- `!warnings [@user]` - Melihat status peringatan
+
+#### Contoh Penggunaan:
+
+- `!warn @user Spam di grup`
+- `!unwarn @user 1` - Menghapus 1 peringatan
+- `!warnings @user` - Melihat detail peringatan user
+- `!warnings` - Melihat semua peringatan di grup
+
+#### Fitur Otomatis:
+
+- Setelah 3 peringatan, member akan otomatis dikeluarkan dari grup
+- Notifikasi peringatan dikirim ke grup dengan detail lengkap
+- Riwayat peringatan tersimpan dengan timestamp dan alasan
+- Admin dapat menghapus peringatan jika diperlukan
 
 ### Command Delay Feature
 
