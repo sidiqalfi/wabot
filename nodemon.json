@@ -1,0 +1,33 @@
+{
+  "watch": [
+    "index.js",
+    "commandHandler.js",
+    "commands/",
+    "lib/",
+    ".env"
+  ],
+  "ignore": [
+    "auth_info/",
+    "data/",
+    "node_modules/",
+    "*.log",
+    "*.json",
+    "*.txt",
+    "*.md",
+    ".git/",
+    "logs/",
+    "*.cache",
+    "*.tmp"
+  ],
+  "ext": "js,json,env",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "delay": "1000",
+  "verbose": false,
+  "colours": true,
+  "restartable": "rs",
+  "legacyWatch": false,
+  "pollingInterval": 1000,
+  "exec": "node index.js"
+}

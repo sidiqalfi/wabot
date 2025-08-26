@@ -48,6 +48,10 @@ Bot WhatsApp yang dibuat menggunakan Baileys dengan sistem command handler modul
     ```bash
     npm run dev
     ```
+    Untuk debugging:
+    ```bash
+    npm run dev:debug
+    ```
 
 ## 📝 Daftar Perintah
 
@@ -336,6 +340,13 @@ Jika user salah mengetik command, bot akan memberikan saran command yang mirip.
 
 ### Auto-Reload Development
 Gunakan `npm run dev` untuk development dengan auto-reload saat ada perubahan file.
+
+**Scripts yang tersedia:**
+- `npm run dev` - Development mode dengan auto-reload
+
+**Konfigurasi Nodemon:**
+- ✅ Watch: `index.js`, `commandHandler.js`, `commands/`, `lib/`, `.env`
+- ❌ Ignore: `auth_info/`, `data/`, `node_modules/`, logs, cache files
 
 ### Recursive Command Loading
 Bot sekarang dapat memuat commands dari subfolder secara rekursif, memungkinkan organisasi yang lebih baik.

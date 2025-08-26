@@ -1,0 +1,44 @@
+# Authentication and session data
+auth_info/
+auth_info/*
+
+# Data files that change frequently
+data/
+data/*
+*.json
+*.txt
+*.log
+
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+
+# Cache and temporary files
+*.cache
+*.tmp
+.cache/
+.tmp/
+
+# Git
+.git/
+
+# Documentation
+*.md
+README.md
+
+# Environment files (except .env)
+.env.local
+.env.production
+.env.staging
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
