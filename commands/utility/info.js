@@ -119,7 +119,11 @@ module.exports = {
           groupSize = meta.participants?.length || 0;
           const admins = (meta.participants || []).filter(p => p.admin);
           adminCount = admins.length;
-          isBotAdmin = admins.some(p => p.id === sock.user?.id && p.admin);
+          const botId = sock.user.lid;
+          const botIdTrim = botId.replace(/:\d+/, "");
+          isBotAdmin = meta.participants
+            .find((p) => p.id === botIdTrim)
+            ?.admin?.includes("admin");
         } catch (e) {
           // ya sudah, tampilkan yang ada
         }
