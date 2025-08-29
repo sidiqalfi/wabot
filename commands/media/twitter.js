@@ -9,7 +9,7 @@ const {
   parseArgs,
   truncate,
   guessPlatformFromUrl,
-  sendMedia
+  sendMedia,
 } = require("../../lib/mediaHelper");
 const fs = require("fs");
 const path = require("path");
@@ -44,8 +44,8 @@ module.exports = {
       // Cek apakah URL adalah Twitter/X
       const platform = guessPlatformFromUrl(url);
       if (platform !== "X/Twitter") {
-        await sock.sendMessage(chatId, { 
-          text: "❌ Command ini hanya untuk Twitter/X. Gunakan command yang sesuai untuk platform lain." 
+        await sock.sendMessage(chatId, {
+          text: "❌ Command ini hanya untuk Twitter/X. Gunakan command yang sesuai untuk platform lain.",
         });
         return;
       }
@@ -61,7 +61,11 @@ module.exports = {
 
       // ====== 4) Kirim notifikasi awal ======
       await sock.sendMessage(chatId, {
-        text: `⏳ Memproses Twitter video...\n\n*${title || "Twitter Video"}*\n> User: ${uploader || "N/A"}\n> Durasi: ${durationText || "N/A"}`,
+        text: `⏳ Memproses Twitter video...\n\n*${
+          title || "Twitter Video"
+        }*\n> User: ${uploader || "N/A"}\n> Durasi: ${
+          durationText || "N/A"
+        }\n\n🔄 Video akan dikonversi untuk kompatibilitas WhatsApp`,
       });
 
       // ====== 5) Siapkan direktori dan file temporary ======
@@ -69,7 +73,9 @@ module.exports = {
 
       // ====== 6) Cek file cookies ======
       const cookiesFilePath = path.join(__dirname, "../../data/cookies.txt");
-      const cookiesFile = fs.existsSync(cookiesFilePath) ? cookiesFilePath : null;
+      const cookiesFile = fs.existsSync(cookiesFilePath)
+        ? cookiesFilePath
+        : null;
 
       // ====== 7) Susun argumen untuk command yt-dlp ======
       // Untuk Twitter, kita download video terbaik
@@ -86,7 +92,10 @@ module.exports = {
       });
 
       // ====== 7) Eksekusi yt-dlp untuk download ======
-      const runResult = await require("../../lib/mediaHelper").runYtDlp(ytdlpArgs, tmpDir);
+      const runResult = await require("../../lib/mediaHelper").runYtDlp(
+        ytdlpArgs,
+        tmpDir
+      );
 
       // Cari file hasil download di direktori temporary
       const files = require("fs")
@@ -104,9 +113,15 @@ module.exports = {
       }
 
       // Ambil file terbesar
-      files.sort((a, b) => require("fs").statSync(b).size - require("fs").statSync(a).size);
+      files.sort(
+        (a, b) =>
+          require("fs").statSync(b).size - require("fs").statSync(a).size
+      );
       const outputFile = files[0];
-      const sizeMB = (require("fs").statSync(outputFile).size / (1024 * 1024)).toFixed(2);
+      const sizeMB = (
+        require("fs").statSync(outputFile).size /
+        (1024 * 1024)
+      ).toFixed(2);
 
       // Validasi ukuran file
       if (require("fs").statSync(outputFile).size > maxSizeMB * 1024 * 1024) {
@@ -118,12 +133,15 @@ module.exports = {
       }
 
       // ====== 8) Buat caption ======
-      const caption = `*${title || "Twitter Video"}*\n\n👤 *User:* ${uploader || "-"}\n⚖️ *Ukuran:* ${sizeMB} MB`;
+      const caption = `*${title || "Twitter Video"}*\n\n👤 *User:* ${
+        uploader || "-"
+      }\n⚖️ *Ukuran:* ${sizeMB} MB`;
 
       // ====== 9) Kirim file ke pengguna ======
-      await sendMedia(sock, chatId, outputFile, { 
-        isAudio: false, 
-        caption 
+      await sendMedia(sock, chatId, outputFile, {
+        isAudio: false,
+        caption,
+        convertForWhatsApp: true, // Konversi untuk kompatibilitas WhatsApp
       });
 
       // ====== 10) Bersihkan file temporary ======
@@ -134,7 +152,7 @@ module.exports = {
         await sock.sendMessage(message.key.remoteJid, {
           text: "❌ Terjadi kesalahan internal saat menjalankan Twitter downloader.",
         });
-      } catch {} 
+      } catch {}
     }
   },
 };

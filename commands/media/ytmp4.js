@@ -12,7 +12,7 @@ const {
   sendMedia,
   getVideoResolution,
   getFormatInfo,
-  parseAndFormatFormatInfo
+  parseAndFormatFormatInfo,
 } = require("../../lib/mediaHelper");
 const fs = require("fs");
 const path = require("path");
@@ -21,7 +21,8 @@ module.exports = {
   name: "ytmp4",
   aliases: ["ytvideo"],
   description: "Download YouTube videos in MP4 format",
-  usage: "ytmp4 <url> [--720p] [--size <NNMB>] [--start HH:MM:SS] [--end HH:MM:SS] [--format]",
+  usage:
+    "ytmp4 <url> [--720p] [--size <NNMB>] [--start HH:MM:SS] [--end HH:MM:SS] [--format]",
   category: "downloader",
 
   async execute(message, sock, args) {
@@ -47,8 +48,8 @@ module.exports = {
       // Cek apakah URL adalah YouTube
       const platform = guessPlatformFromUrl(url);
       if (platform !== "YouTube") {
-        await sock.sendMessage(chatId, { 
-          text: "❌ Command ini hanya untuk YouTube. Gunakan command yang sesuai untuk platform lain." 
+        await sock.sendMessage(chatId, {
+          text: "❌ Command ini hanya untuk YouTube. Gunakan command yang sesuai untuk platform lain.",
         });
         return;
       }
@@ -63,32 +64,41 @@ module.exports = {
       // Jika flag --format digunakan, tampilkan format yang tersedia
       if (showFormat) {
         await sock.sendMessage(chatId, {
-          text: `⏳ Mendapatkan informasi format untuk:\n${url}`
+          text: `⏳ Mendapatkan informasi format untuk:\n${url}`,
         });
 
         // Cek file cookies untuk format info
         const cookiesFilePath = path.join(__dirname, "../../data/cookies.txt");
-        const cookiesFile = fs.existsSync(cookiesFilePath) ? cookiesFilePath : null;
-        
+        const cookiesFile = fs.existsSync(cookiesFilePath)
+          ? cookiesFilePath
+          : null;
+
         // Menggunakan flag -F untuk mendapatkan informasi format
         const formatArgs = ["-F", "--no-warnings", url];
         if (cookiesFile) {
           formatArgs.splice(1, 0, "--cookies", cookiesFile);
         }
-        
-        const formatInfo = await require("../../lib/mediaHelper").runYtDlp(formatArgs, process.cwd());
-        const formatOutput = formatInfo.stdout || formatInfo.stderr || "Tidak ada informasi format tersedia";
-        
+
+        const formatInfo = await require("../../lib/mediaHelper").runYtDlp(
+          formatArgs,
+          process.cwd()
+        );
+        const formatOutput =
+          formatInfo.stdout ||
+          formatInfo.stderr ||
+          "Tidak ada informasi format tersedia";
+
         // Parse and format the output
         const formattedOutput = parseAndFormatFormatInfo(formatOutput);
 
         // Batasi panjang output agar tidak terlalu panjang
-        const truncatedOutput = formattedOutput.length > 3000
-          ? formattedOutput.substring(0, 3000) + "\n\n... (output dipotong)"
-          : formattedOutput;
+        const truncatedOutput =
+          formattedOutput.length > 3000
+            ? formattedOutput.substring(0, 3000) + "\n\n... (output dipotong)"
+            : formattedOutput;
 
         await sock.sendMessage(chatId, {
-          text: truncatedOutput
+          text: truncatedOutput,
         });
 
         return;
@@ -102,7 +112,15 @@ module.exports = {
 
       // ====== 4) Kirim notifikasi awal ======
       await sock.sendMessage(chatId, {
-        text: `⏳ Memproses YouTube video...\n\n*${title || "Tanpa Judul"}*\n> Channel: ${uploader || "N/A"}\n> Durasi: ${durationText || "N/A"}\n> Resolusi: ${want720p ? "≤720p" : "Terbaik"}${startAt || endAt ? `\n> Potong: ${startAt || "awal"} → ${endAt || "akhir"}` : ""}`,
+        text: `⏳ Memproses YouTube video...\n\n*${
+          title || "Tanpa Judul"
+        }*\n> Channel: ${uploader || "N/A"}\n> Durasi: ${
+          durationText || "N/A"
+        }\n> Resolusi: ${want720p ? "≤720p" : "Terbaik"}${
+          startAt || endAt
+            ? `\n> Potong: ${startAt || "awal"} → ${endAt || "akhir"}`
+            : ""
+        }\n\n🔄 Video akan dikonversi untuk kompatibilitas WhatsApp`,
       });
 
       // ====== 5) Siapkan direktori dan file temporary ======
@@ -110,7 +128,9 @@ module.exports = {
 
       // ====== 6) Cek file cookies ======
       const cookiesFilePath = path.join(__dirname, "../../data/cookies.txt");
-      const cookiesFile = fs.existsSync(cookiesFilePath) ? cookiesFilePath : null;
+      const cookiesFile = fs.existsSync(cookiesFilePath)
+        ? cookiesFilePath
+        : null;
 
       // ====== 7) Susun argumen untuk command yt-dlp ======
       const ytdlpArgs = buildYtDlpArgs({
@@ -126,7 +146,10 @@ module.exports = {
       });
 
       // ====== 7) Eksekusi yt-dlp untuk download ======
-      const runResult = await require("../../lib/mediaHelper").runYtDlp(ytdlpArgs, tmpDir);
+      const runResult = await require("../../lib/mediaHelper").runYtDlp(
+        ytdlpArgs,
+        tmpDir
+      );
 
       // Cari file hasil download di direktori temporary
       const files = require("fs")
@@ -144,9 +167,15 @@ module.exports = {
       }
 
       // Ambil file terbesar
-      files.sort((a, b) => require("fs").statSync(b).size - require("fs").statSync(a).size);
+      files.sort(
+        (a, b) =>
+          require("fs").statSync(b).size - require("fs").statSync(a).size
+      );
       const outputFile = files[0];
-      const sizeMB = (require("fs").statSync(outputFile).size / (1024 * 1024)).toFixed(2);
+      const sizeMB = (
+        require("fs").statSync(outputFile).size /
+        (1024 * 1024)
+      ).toFixed(2);
 
       // Validasi ukuran file
       if (require("fs").statSync(outputFile).size > maxSizeMB * 1024 * 1024) {
@@ -159,17 +188,21 @@ module.exports = {
 
       // ====== 8) Dapatkan informasi resolusi video ======
       const resolution = await getVideoResolution(outputFile);
-      const resolutionText = resolution.width && resolution.height
-        ? `${resolution.width}x${resolution.height}`
-        : "Tidak diketahui";
+      const resolutionText =
+        resolution.width && resolution.height
+          ? `${resolution.width}x${resolution.height}`
+          : "Tidak diketahui";
 
       // ====== 10) Buat caption ======
-      const caption = `*${title || "YouTube Video"}*\n\n👤 *Channel:* ${uploader || "-"}\n⚖️ *Ukuran:* ${sizeMB} MB\n📐 *Resolusi:* ${resolutionText}`;
+      const caption = `*${title || "YouTube Video"}*\n\n👤 *Channel:* ${
+        uploader || "-"
+      }\n⚖️ *Ukuran:* ${sizeMB} MB\n📐 *Resolusi:* ${resolutionText}`;
 
       // ====== 11) Kirim file ke pengguna ======
       await sendMedia(sock, chatId, outputFile, {
         isAudio: false,
-        caption
+        caption,
+        convertForWhatsApp: true, // Konversi untuk kompatibilitas WhatsApp
       });
 
       // ====== 12) Bersihkan file temporary ======
@@ -180,7 +213,7 @@ module.exports = {
         await sock.sendMessage(message.key.remoteJid, {
           text: "❌ Terjadi kesalahan internal saat menjalankan YouTube video downloader.",
         });
-      } catch {} 
+      } catch {}
     }
   },
 };
